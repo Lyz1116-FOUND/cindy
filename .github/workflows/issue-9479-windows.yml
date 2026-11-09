@@ -1,0 +1,51 @@
+name: Issue 9479 Windows verification
+on:
+  push:
+    branches: [codex/verify-9479-windows]
+permissions:
+  contents: read
+jobs:
+  windows-preview:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      XDT_SKIP_AGENT_BIN_INSTALL: '1'
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: daed39c144c377af1a3fae1011d81fcfddaee219
+          lfs: true
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install frozen dependencies
+        id: install
+        run: pnpm install --frozen-lockfile
+      - name: Install bundled ripgrep
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm install:ripgrep
+      - name: Desktop preview and language regressions
+        run: pnpm --filter desktop exec vitest run src/renderer/components/markdown/__tests__ src/renderer/components/chat/__tests__/TextLightboxInteraction.test.tsx src/renderer/__tests__/textLightbox.test.ts src/renderer/__tests__/textLightboxLineScroll.test.ts src/renderer/__tests__/unsupportedTextPreview.test.ts src/renderer/__tests__/fileTypes.test.ts src/renderer/__tests__/plaintextEditorCodeChrome.test.ts src/renderer/__tests__/markdownTableSearchHighlight.test.ts src/renderer/__tests__/sentPastedTextPreview.test.ts src/renderer/features/cc-agent/workdir-browse --maxWorkers=2
+      - name: Shared preview and filename rules
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm --filter @cindy/maker-shared test
+      - name: File browser core regressions
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm --filter @cindy/file-browser-core test
+      - name: Real Windows Electron Solidity and adjacent previews
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: pnpm ui:check --page markdown-preview-find --case solidity-preview,solidity-file-body,json-preview,default --theme all --output artifacts/windows-9479
+      - name: Upload actual Windows screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: issue-9479-windows-electron
+          path: artifacts/windows-9479
+          if-no-files-found: warn
