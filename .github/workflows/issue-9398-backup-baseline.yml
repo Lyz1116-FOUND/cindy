@@ -1,0 +1,39 @@
+name: Issue 9398 backup baseline comparison
+on:
+  push:
+    branches: [codex/verify-9398-db]
+permissions:
+  contents: read
+jobs:
+  backup-regression:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [a912a5be46f18ccd7abde27dd6779203dbe689e1, 6015fd92c94a19b05a7491dd2c16ab6c86e141c9]
+    timeout-minutes: 35
+    env:
+      XDT_SKIP_AGENT_BIN_INSTALL: '1'
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      ELECTRON_OVERRIDE_DIST_PATH: '${{ github.workspace }}/.electron-stub-dist'
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ matrix.ref }}
+          lfs: true
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Install bundled ripgrep
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm install:ripgrep
+      - name: Run unchanged backup regression
+        run: pnpm --filter desktop exec vitest run src/main/localDb/__tests__/backup.test.ts --maxWorkers=1
