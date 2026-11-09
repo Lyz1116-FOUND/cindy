@@ -1,0 +1,42 @@
+name: Issue 9398 Windows regression
+on:
+  push:
+    branches: [codex/verify-9398-integrated]
+permissions:
+  contents: read
+jobs:
+  windows-regression:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      XDT_SKIP_AGENT_BIN_INSTALL: '1'
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 6015fd92c94a19b05a7491dd2c16ab6c86e141c9
+          lfs: true
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Install bundled ripgrep
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: pnpm install:ripgrep
+      - name: Run six plan loading regressions on Windows
+        run: pnpm --filter desktop exec vitest run src/renderer/features/bots/__tests__/BotGroupChatView.test.tsx --maxWorkers=1 -t "waits for plan details|confirmed missing plan|incomplete plan when|recovers plan details"
+      - name: Run real Windows Electron light and dark scenarios
+        run: pnpm ui:check --page group-chat --case plan-read-talk,plan-read-work,plan-read-missing --theme all --output artifacts/windows-9398
+      - name: Upload Windows screenshots and summaries
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: issue-9398-windows-electron
+          path: artifacts/windows-9398
+          if-no-files-found: warn

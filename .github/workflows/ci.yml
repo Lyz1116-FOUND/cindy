@@ -7,7 +7,7 @@ on:
   merge_group:
   push:
     branches:
-      - main
+      - codex/verify-9398-integrated
   workflow_dispatch:
 
 permissions:
