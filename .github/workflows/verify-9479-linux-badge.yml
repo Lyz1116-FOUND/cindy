@@ -1,0 +1,36 @@
+name: Issue 9479 Linux badge baseline comparison
+on:
+  push:
+    branches: [codex/verify-9479-linux-badge]
+permissions:
+  contents: read
+jobs:
+  badge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [eb6c8075a757e4b937913eb0e609db8cc2d0b620, daed39c144c377af1a3fae1011d81fcfddaee219]
+    env:
+      XDT_SKIP_AGENT_BIN_INSTALL: '1'
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      ELECTRON_OVERRIDE_DIST_PATH: '${{ github.workspace }}/.electron-stub-dist'
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ matrix.ref }}
+          lfs: true
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Unmodified PNG regression
+        run: pnpm --filter desktop exec vitest run src/main/__tests__/windowsBadgeIcon.test.ts --maxWorkers=1
