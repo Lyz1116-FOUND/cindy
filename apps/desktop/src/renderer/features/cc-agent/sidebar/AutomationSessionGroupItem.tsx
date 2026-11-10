@@ -24,6 +24,7 @@ import {
   getAutomationGroupChildView,
   getAutomationGroupLatestSession,
 } from '../lib/automationSidebarGrouping';
+import { getBuiltinFollowUpDisplayTitle } from '../lib/sessionDisplayTitle';
 import { useAutomationGroupCollapsed } from '../hooks/useAutomationGroupCollapsed';
 import { formatSidebarFutureTime, formatSidebarTime } from '../lib/formatSidebarTime';
 import { scheduleFocusPath } from '@/features/scheduler/lib/scheduleSessionBinding';
@@ -228,6 +229,10 @@ export const AutomationSessionGroupItem = withSidebarNavigation<AutomationSessio
     // 伙伴例行任务分组没有 schedule：只提供标为已读，运行与编辑在伙伴设置「例行任务」页。
     // 伙伴任务的归档归伙伴生命周期管理，主进程拒绝通用归档，所以这里也不提供「全部归档」。
     const teammateRoutine = group.teammateRoutine;
+    // 分组键与存储名不随语言变化；可见标题和无障碍名称共用当前语言的投影。
+    const displayGroupTitle = teammateRoutine
+      ? getBuiltinFollowUpDisplayTitle(group.title, teammateRoutine.routineId, t)
+      : group.title;
     // 远程且已结束、又没有未读时，菜单里没有可执行项，不显示「更多」。
     const hasMoreMenuItems = teammateRoutine
       ? canMarkRead
@@ -466,7 +471,7 @@ export const AutomationSessionGroupItem = withSidebarNavigation<AutomationSessio
       collapsed
         ? 'ccAgent.sidebar.automationGroup.expand'
         : 'ccAgent.sidebar.automationGroup.collapse',
-      { title: group.title },
+      { title: displayGroupTitle },
     );
     const rowTooltip = useMemo(
       () =>
@@ -611,7 +616,7 @@ export const AutomationSessionGroupItem = withSidebarNavigation<AutomationSessio
                 disabled={!latestSession}
                 className="min-w-0 truncate text-left disabled:cursor-default"
               >
-                <span className="min-w-0 truncate">{group.title}</span>
+                <span className="min-w-0 truncate">{displayGroupTitle}</span>
               </button>
               {/* 例行任务分组：标题后显示所属伙伴头像，与组内各行的伙伴标记同源。 */}
               {teammateRoutine && latestSession && (

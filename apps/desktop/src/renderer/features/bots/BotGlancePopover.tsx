@@ -27,6 +27,7 @@ import { usePrActions, usePrRefsForSessions, usePrStatuses } from '@/contexts/Pr
 import { prStatusKey, sessionPrUrl, type SessionPrRef } from '@cindy/maker-shared';
 import { PR_STATUS_ICON, prStatusColor } from '@/features/cc-agent/gitContextPrVisuals';
 import { sessionActivityMs } from '@/features/cc-agent/lib/dateSessionGrouping';
+import { getSessionDisplayTitle } from '@/features/cc-agent/lib/sessionDisplayTitle';
 import { AutomationTimerIcon } from '@/features/cc-agent/sidebar/AutomationTimerIcon';
 import { isDeviceLinkRemotePushCurrent } from '@/lib/remoteDataOwnerPushFence';
 import { matchesTaskCreators, useTaskCreatorIndex } from './botFollowScopes';
@@ -763,11 +764,12 @@ function RecentTask({ task, routine, onOpen }: { task?: Session; routine?: Routi
   const attention = useSessionAttentionKind(task?.id ?? '');
   const { t } = useTranslation();
   const automatic = routine || task?.companion?.role === 'routine' || task?.source === 'scheduler';
+  const taskTitle = task ? getSessionDisplayTitle(task, t('ccAgent.common.unnamedSession'), t) : '';
   return <Row testId="bot-glance-task" icon={automatic
     ? <span role="img" aria-label={t('routines.title')}>
         <AutomationTimerIcon size={16} className="size-5" paused={routine?.enabled === false} running={routine?.activity === 'running'} />
       </span>
-    : <MessageCircle size={16} />} title={routine?.name ?? task?.title ?? ''}
+    : <MessageCircle size={16} />} title={routine?.name ?? taskTitle}
     onClick={onOpen}
     trailing={routine?.enabled === false || attention === 'done' ? <>{routine?.enabled === false ? <span>{t('routines.paused')}</span> : null}
       {attention === 'done' ? <span className="flex items-center" role="img" aria-label={t('bots.glance.unread')}><AttentionDot tone="done" /></span> : null}</> : undefined} />;

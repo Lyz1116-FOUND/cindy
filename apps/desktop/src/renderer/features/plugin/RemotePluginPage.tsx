@@ -133,6 +133,8 @@ export function RemotePluginPage({
   scope.current.online = online;
   const readRevision = useRef(0),
     detailRevision = useRef(0);
+  const refreshInFlight = useRef(false);
+  const refreshQueued = useRef(false);
   const operation = useRef<string | null>(null),
     preparing = useRef(false);
   const [preparingUi, setPreparingUi] = useState(false);
@@ -181,6 +183,16 @@ export function RemotePluginPage({
       if (writable() && revision === readRevision.current) setStatus('readFailed');
     }
   }, [device.deviceId, i18n.language, invoke, writable]);
+  const requestRefresh = useCallback(() => {
+    if (!writable()) return;
+    if (refreshInFlight.current) { refreshQueued.current = true; return; }
+    refreshInFlight.current = true;
+    refreshQueued.current = false;
+    void refresh().finally(() => {
+      refreshInFlight.current = false;
+      if (refreshQueued.current && writable()) requestRefresh();
+    });
+  }, [refresh, writable]);
   useEffect(() => {
     let active = true;
     setConsumedToday(new Set());
@@ -314,9 +326,9 @@ export function RemotePluginPage({
           isDeviceLinkRemotePushCurrent(push, stamp) &&
           writable()
         )
-          void refresh();
+          requestRefresh();
       }),
-    [active, device.deviceId, refresh, writable],
+    [active, device.deviceId, requestRefresh, writable],
   );
   const acceptReceipt = useCallback(
     async (next: PluginManagementReceipt) => {

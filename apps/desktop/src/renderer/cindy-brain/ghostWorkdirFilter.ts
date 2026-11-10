@@ -12,7 +12,7 @@
  * 发送时仍现查策略；目录键归一化在 main 侧统一做。
  */
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { InstalledGhost } from '../../shared/ghost';
 import { installedGhostStoragePart } from '../../shared/pluginIdentity';
 import { getDataOwnerGeneration, isDataOwnerGenerationCurrent, isDataOwnerPushCurrent } from '../contexts/dataOwnerGeneration';
@@ -44,6 +44,66 @@ export function filterGhostsForWorkdir(
 }
 
 const NO_DISABLED_GHOSTS = new Set<string>();
+type WorkdirPolicySnapshot = { workdir: string; disabled: Set<string> } | null;
+const policyStores = new Map<string, ReturnType<typeof createPolicyStore>>();
+
+/** Display-only shared policy read. Sending still checks current policy at the host. */
+function createPolicyStore(workdir: string) {
+  const owner = getDataOwnerGeneration();
+  const listeners = new Set<() => void>();
+  let snapshot: WorkdirPolicySnapshot = null;
+  let workdirKey: string | undefined;
+  let revision = 0;
+  let disposed = false;
+  const current = () => !disposed && isDataOwnerGenerationCurrent(owner);
+  const notify = () => { for (const listener of listeners) listener(); };
+  const refresh = () => {
+    if (!current()) return;
+    const requested = ++revision;
+    void Promise.resolve().then(() => window.electronAPI.ghosts.workdirPrefs(workdir)).then((policy) => {
+      if (!current() || requested !== revision) return;
+      workdirKey = policy.workdirKey;
+      snapshot = { workdir, disabled: new Set(policy.disabled) };
+      notify();
+    }).catch(() => {
+      if (current() && requested === revision) { snapshot = null; notify(); }
+    });
+  };
+  const unsubscribe = window.electronAPI.ghosts.onWorkdirPrefsChanged?.((policy, ownerStamp) => {
+    if (!current() || !isDataOwnerPushCurrent(ownerStamp)) return;
+    if (workdirKey === undefined) { refresh(); return; }
+    if (workdirKey !== policy.workdirKey) return;
+    revision++;
+    snapshot = { workdir, disabled: new Set(policy.disabled) };
+    notify();
+  });
+  refresh();
+  return {
+    current,
+    getSnapshot: () => snapshot,
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+        if (!listeners.size) {
+          disposed = true;
+          unsubscribe?.();
+          policyStores.delete(workdir);
+        }
+      };
+    },
+  };
+}
+
+function getPolicyStore(workdir: string) {
+  let store = policyStores.get(workdir);
+  if (store && !store.current()) { policyStores.delete(workdir); store = undefined; }
+  if (!store) { store = createPolicyStore(workdir); policyStores.set(workdir, store); }
+  return store;
+}
+
+const noSubscription = () => () => {};
+const nullSnapshot = () => null;
 
 /** Display-only projection. Sending still checks current policy at the host. */
 export function useWorkdirDisabledGhostIds(
@@ -51,37 +111,9 @@ export function useWorkdirDisabledGhostIds(
   ghosts: InstalledGhost[],
   enabled = true,
 ): Set<string> | null {
-  const [snapshot, setSnapshot] = useState<{
-    workdir: typeof workdir; ghosts: InstalledGhost[]; disabled: Set<string>;
-  } | null>(null);
-  useEffect(() => {
-    if (!enabled || !workdir?.trim() || ghosts.length === 0) return;
-    let current = true;
-    let workdirKey: string | undefined;
-    let revision = 0;
-    const refresh = () => {
-      const owner = getDataOwnerGeneration();
-      const requested = ++revision;
-      void Promise.resolve().then(() => window.electronAPI.ghosts.workdirPrefs(workdir)).then((policy) => {
-        if (!current || requested !== revision || !isDataOwnerGenerationCurrent(owner)) return;
-        workdirKey = policy.workdirKey;
-        setSnapshot({ workdir, ghosts, disabled: new Set(policy.disabled) });
-      }).catch(() => {
-        // Unknown policy must not expose a previously enabled directory's commands.
-        if (current && requested === revision && isDataOwnerGenerationCurrent(owner)) setSnapshot(null);
-      });
-    };
-    const unsubscribe = window.electronAPI.ghosts.onWorkdirPrefsChanged?.((policy, ownerStamp) => {
-      if (!current || !isDataOwnerPushCurrent(ownerStamp)) return;
-      // Before the first response, the Host has not supplied the canonical key yet.
-      if (workdirKey === undefined) { refresh(); return; }
-      if (workdirKey !== policy.workdirKey) return;
-      revision++;
-      setSnapshot({ workdir, ghosts, disabled: new Set(policy.disabled) });
-    });
-    refresh();
-    return () => { current = false; unsubscribe?.(); };
-  }, [workdir, ghosts, enabled]);
-  if (!enabled || !workdir?.trim() || ghosts.length === 0) return NO_DISABLED_GHOSTS;
-  return snapshot?.workdir === workdir && snapshot.ghosts === ghosts ? snapshot.disabled : null;
+  const active = enabled && !!workdir?.trim() && ghosts.length > 0;
+  const store = active && workdir ? getPolicyStore(workdir) : null;
+  const snapshot = useSyncExternalStore(store ? store.subscribe : noSubscription, store ? store.getSnapshot : nullSnapshot);
+  if (!active) return NO_DISABLED_GHOSTS;
+  return snapshot && snapshot.workdir === workdir ? snapshot.disabled : null;
 }

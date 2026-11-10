@@ -710,6 +710,13 @@ export class GhostManager {
     roots: () => this.managedRootDirs(),
     scan: () => this.listAsync(),
   });
+  /** Discovery hint for privacy-sensitive hooks; never an approval cache. */
+  private readonly hookIndex = new GhostNotificationIndex({
+    roots: () => this.managedRootDirs(),
+    scan: () => this.listAsync(),
+    filter: ghost => ghost.enabled && !!ghost.manifest.subscribe?.hooks?.length,
+  });
+  private listAsyncFlight: { owner: string; promise: Promise<InstalledGhost[]> } | null = null;
   private readonly receiptStore: GhostInstallReceiptStore;
   private readonly retirements = new FeatureRetirementStore(() => this.receiptStore.rootDir());
   private ownerContextKey: string;
@@ -1404,6 +1411,7 @@ export class GhostManager {
     this.assertDisjointRoots(this.resolveContentRoot(), this.resolveStateRoot());
     this.ownerContextKey = next;
     this.notificationIndex.dispose();
+    this.hookIndex.dispose();
     this.instanceRegistryService.clear();
     this.recoverInterruptedMutationsSync();
   }
@@ -2804,7 +2812,20 @@ export class GhostManager {
    * Do not call from inside runExclusiveMutation: discovery waits for that lane.
    */
   async listAsync(): Promise<InstalledGhost[]> {
-    return (await this.scanInstalledAsync()).ghosts;
+    const owner = this.currentOwnerContextKey();
+    if (this.listAsyncFlight?.owner === owner) return this.listAsyncFlight.promise;
+    const promise = this.scanInstalledAsync().then(result => result.ghosts).finally(() => {
+      if (this.listAsyncFlight?.promise === promise) this.listAsyncFlight = null;
+    });
+    this.listAsyncFlight = { owner, promise };
+    return promise;
+  }
+
+  /** Hook discovery hint; the caller still gates privacy-sensitive behavior on it. */
+  async hasEnabledHookAsync(hook: string): Promise<boolean> {
+    this.ensureCurrentOwnerContextSync();
+    const candidates = await this.hookIndex.read();
+    return candidates.some(ghost => ghost.enabled && ghost.manifest.subscribe?.hooks?.some(item => item === hook));
   }
 
   /** Topic discovery only; never use these candidates to authorize execution. */
@@ -2815,10 +2836,12 @@ export class GhostManager {
 
   invalidateNotificationCandidates(): void {
     this.notificationIndex.invalidate();
+    this.hookIndex.invalidate();
   }
 
   disposeNotificationIndex(): void {
     this.notificationIndex.dispose();
+    this.hookIndex.dispose();
   }
 
   /** Only the caller's current market refresh retains this read-only view. */

@@ -19,6 +19,9 @@ export const HOST_SESSIONS_SOURCE_ID = 'host:sessions';
 /** 内置跟进例行任务的 id 前缀；完整 id 由主进程 builtinRoutine.ts 的 builtinFollowUpRoutineId 生成，幂等。 */
 export const BUILTIN_FOLLOW_UP_ROUTINE_PREFIX = 'builtin-follow-up-';
 
+/** 内置跟进的稳定存储名；当前语言的显示名由 renderer 只读投影，不写回规则或任务。 */
+export const FOLLOW_UP_ROUTINE_NAME = '跟进任务';
+
 /**
  * 「每天查待办」例行任务的 id 前缀；主人在近况里打开时才建，完整 id 见 todoCheckRoutine.ts。
  * 它已是可编辑的普通例行任务，`builtin-` 前缀是早期内置时期留下的已存 id，保留以便旧数据与近况开关对上。

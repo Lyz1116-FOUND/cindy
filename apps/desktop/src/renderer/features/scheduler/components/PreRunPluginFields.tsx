@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createGhostDisplayProjection, useGhostDisplayProjection, type GhostDisplayProjection } from '@/cindy-brain/ghostDisplayProjection';
 
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
@@ -18,26 +19,19 @@ import {
 
 type PreRunPoint = 'will-schedule-run' | 'will-routine-run' | 'will-start-task';
 
+const EMPTY_CANDIDATES: GhostControlPointCandidate[] | null = null;
+const candidateProjections = new Map<PreRunPoint, GhostDisplayProjection<GhostControlPointCandidate[] | null>>();
+function candidateProjection(point: PreRunPoint) {
+  let projection = candidateProjections.get(point);
+  if (!projection) {
+    projection = createGhostDisplayProjection(() => window.electronAPI.ghosts.listControlPointCandidates(point), EMPTY_CANDIDATES);
+    candidateProjections.set(point, projection);
+  }
+  return projection;
+}
+
 export function usePreRunPluginCandidates(point: PreRunPoint, enabled = true): GhostControlPointCandidate[] | null {
-  const [candidates, setCandidates] = useState<GhostControlPointCandidate[] | null>(null);
-  useEffect(() => {
-    if (!enabled) return;
-    let alive = true;
-    // 页面开着时装上、更新、启停或卸载插件，候选也要跟着变。
-    const refresh = () => {
-      window.electronAPI.ghosts
-        .listControlPointCandidates(point)
-        .then((list) => alive && setCandidates(list))
-        .catch(() => alive && setCandidates([]));
-    };
-    refresh();
-    const off = window.electronAPI.ghosts.onChanged(refresh);
-    return () => {
-      alive = false;
-      off();
-    };
-  }, [point, enabled]);
-  return candidates;
+  return useGhostDisplayProjection(candidateProjection(point), enabled);
 }
 
 export function PreRunPluginFields({

@@ -18,6 +18,8 @@ export class GhostNotificationIndex {
     roots(): string[];
     scan(): Promise<InstalledGhost[]>;
     now?: () => number;
+    /** Discovery hint only; callers still re-check the exact instance before delivery. */
+    filter?: (ghost: InstalledGhost) => boolean;
   }) {}
 
   invalidate(): void {
@@ -81,7 +83,7 @@ export class GhostNotificationIndex {
     if (this.pending?.generation === this.generation) return this.pending.promise;
     const generation = this.generation;
     const pending = { generation, promise: this.deps.scan().then(ghosts => {
-      const candidates = ghosts.filter(ghost => ghost.enabled && ghost.manifest.subscribe?.topics?.length);
+      const candidates = ghosts.filter(this.deps.filter ?? (ghost => ghost.enabled && ghost.manifest.subscribe?.topics?.length));
       // A scan racing a mutation/owner change never becomes the next event's index.
       // The caller rechecks every candidate and its approval before this event is sent.
       if (this.watched && generation === this.generation) {

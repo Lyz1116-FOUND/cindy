@@ -141,20 +141,25 @@ export interface FuzzyRanked<T> {
  *
  * @param items     候选数组
  * @param query     搜索关键字(空字符串 → 直接返回全量,不评分)
- * @param getText   从 item 提取用于匹配的字符串
+ * @param getText   从 item 提取一个或多个候选；多候选取最高分，同分保留先出现的候选
  */
 export function fuzzyFilterAndRank<T>(
   items: readonly T[],
   query: string,
-  getText: (item: T) => string,
+  getText: (item: T) => string | readonly string[],
 ): FuzzyRanked<T>[] {
   if (!query) {
     return items.map((item) => ({ item, score: 0, indices: [] }));
   }
   const out: FuzzyRanked<T>[] = [];
   for (const item of items) {
-    const r = fuzzyMatch(getText(item), query);
-    if (r) out.push({ item, score: r.score, indices: r.indices });
+    const texts = getText(item);
+    let best: FuzzyMatchResult | null = null;
+    for (const text of typeof texts === 'string' ? [texts] : texts) {
+      const match = fuzzyMatch(text, query);
+      if (match && (!best || match.score > best.score)) best = match;
+    }
+    if (best) out.push({ item, score: best.score, indices: best.indices });
   }
   out.sort((a, b) => b.score - a.score);
   return out;

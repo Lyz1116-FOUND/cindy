@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { posix, win32 } from 'node:path';
 
 import { DEFAULT_DRAFT_SESSION_TITLE } from '@cindy/maker-shared/session-title';
+import { FOLLOW_UP_ROUTINE_NAME } from '../../../../../shared/botAutonomy';
+import { SUPPORTED_LOCALES } from '../../../../../shared/locale';
+import { getCrossLocaleString } from '@/i18n/crossLocale';
 
 import type { Session } from '@/lib/ccAgent.types';
 
@@ -187,6 +190,93 @@ describe('getSessionDisplayTitle', () => {
     expect(getSessionDisplayTitle(session({ title: '[Schedule] nightly-build' }), UNNAMED)).toBe(
       'nightly-build',
     );
+  });
+});
+
+// #9580: 公共标题投影原来只处理草稿和 Make，内置例行任务的存储名漏到了英文界面。
+// unit: 合成任务经生产入口投影；最小失败输入为 en + bot/routine + 内置跟进 ID + 默认名。
+describe('built-in follow-up titles', () => {
+  const key = 'routines.builtinFollowUp.name';
+  const followUp = () => session({
+    title: FOLLOW_UP_ROUTINE_NAME,
+    source: 'bot',
+    companion: { id: 'analysis-bot', role: 'routine', routineId: 'builtin-follow-up-analysis-bot' },
+  });
+
+  it.each([
+    ['en', 'Follow assigned sessions (built-in)'],
+    ['zh-CN', '跟进已接手的任务（内置）'],
+    ['ja', '担当セッションのフォロー（標準）'],
+  ])('projects the default title in %s without changing stored data or highlighting it', (_locale, label) => {
+    const s = followUp();
+    const translate = vi.fn(() => label);
+    expect(getSessionDisplayTitle(s, UNNAMED, translate)).toBe(label);
+    expect(translate).toHaveBeenCalledWith(key);
+    expect(s.title).toBe(FOLLOW_UP_ROUTINE_NAME);
+    expect(canHighlightSessionDisplayTitle(s, translate)).toBe(false);
+  });
+
+  it.each(SUPPORTED_LOCALES)('restores an unchanged %s default display name to the stored title', (locale) => {
+    const label = getCrossLocaleString(locale, 'routines.builtinFollowUp.name');
+    expect(label).toBeTruthy();
+    expect(toStoredSessionTitle(followUp(), label!)).toBe(FOLLOW_UP_ROUTINE_NAME);
+  });
+
+  it('still saves a custom title changed to a localized default label', () => {
+    const s = { ...followUp(), title: 'My task tracker' };
+    expect(toStoredSessionTitle(s, 'Follow assigned sessions (built-in)')).toBe(
+      'Follow assigned sessions (built-in)',
+    );
+  });
+
+  it('accepts the normalized routine ID of a hashed built-in rule without parsing the bot ID', () => {
+    const s = followUp();
+    s.companion = {
+      id: 'bot.with.special/characters',
+      role: 'routine',
+      routineId: `builtin-follow-up-${'a'.repeat(40)}`,
+    };
+    expect(getSessionDisplayTitle(s, UNNAMED, () => 'Follow assigned sessions (built-in)')).toBe(
+      'Follow assigned sessions (built-in)',
+    );
+  });
+
+  it('preserves custom names across languages and explicit renames', () => {
+    const s = followUp();
+    for (const title of ['My task tracker', '跟进已接手的任务（内置）', `${FOLLOW_UP_ROUTINE_NAME} `]) {
+      s.title = title;
+      for (const label of ['Follow assigned sessions (built-in)', '担当セッションのフォロー（標準）']) {
+        const translate = vi.fn(() => label);
+        expect(getSessionDisplayTitle(s, UNNAMED, translate)).toBe(title);
+        expect(translate).not.toHaveBeenCalled();
+        expect(canHighlightSessionDisplayTitle(s, translate)).toBe(true);
+        expect(toStoredSessionTitle(s, 'My task tracker')).toBe('My task tracker');
+        expect(getSessionDisplayTitle({ ...s, title: 'My task tracker' }, UNNAMED, translate)).toBe(
+          'My task tracker',
+        );
+      }
+    }
+  });
+
+  it('does not replace the same text in ordinary sessions, other roles or other routines', () => {
+    const s = followUp();
+    const translate = vi.fn(() => 'unexpected');
+    for (const other of [
+      { ...s, source: 'desktop' as const },
+      { ...s, source: undefined },
+      { ...s, companion: null },
+      { ...s, companion: { id: 'analysis-bot', role: 'routine' } },
+      { ...s, companion: { ...s.companion!, role: 'canonical' } },
+      { ...s, companion: { ...s.companion!, routineId: 'custom-routine' } },
+      { ...s, companion: { ...s.companion!, routineId: 'builtin-nightly-learning-analysis-bot' } },
+    ]) {
+      expect(getSessionDisplayTitle(other, UNNAMED, translate)).toBe(FOLLOW_UP_ROUTINE_NAME);
+    }
+    expect(translate).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, (key: string) => key, () => ''])('keeps the original title when translation is unavailable (%s)', (translate) => {
+    expect(getSessionDisplayTitle(followUp(), UNNAMED, translate)).toBe(FOLLOW_UP_ROUTINE_NAME);
   });
 });
 

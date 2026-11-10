@@ -27,12 +27,52 @@ const sessions = Array.from(
       _count: { messages: 5 },
     }) as Session,
 );
+const followSessions = ['follow-1', 'follow-2'].map((id, i) => ({
+  id,
+  title: i === 0 ? '跟进任务' : 'My task tracker',
+  status: 'active',
+  source: 'bot',
+  companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+  createdAt: new Date(now - i * 60_000).toISOString(),
+  updatedAt: new Date(now - i * 60_000).toISOString(),
+  agentKind: 'codex',
+  pinnedAt: null,
+  workspaceKind: 'project',
+  workingDir: '/example',
+  _count: { messages: 1 },
+}) as Session);
+
 function Specimen() {
   const isDemo = ctx.case === 'demo';
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = sessions.find((session) => session.id === selectedId);
   const [collapsed, setCollapsed] = useState(true);
   const [unread, setUnread] = useState(new Set(sessions.slice(0, 7).map((s) => s.id)));
+  if (ctx.case === 'follow-up' || ctx.case === 'follow-up-expanded') {
+    return (
+      <div className="bg-sidebar text-foreground p-3" style={{ width: ctx.case === 'follow-up-expanded' ? 420 : 300 }}>
+        <AutomationSessionGroupItem
+          group={{
+            id: 'routine:bot:builtin-follow-up-bot',
+            title: '跟进任务',
+            teammateRoutine: { botId: 'bot', routineId: 'builtin-follow-up-bot' },
+            sessions: followSessions,
+            attentionSessionIds: [],
+          }}
+          collapsed={ctx.case !== 'follow-up-expanded'}
+          onCollapsedChange={noop}
+          runningSessionIds={new Set()}
+          attachedSessionIds={new Set()}
+          notifications={new Set()}
+          onSessionClick={noop}
+          onAction={noop}
+          onRename={noop}
+          onTogglePin={noop}
+          onScheduleAction={noop}
+        />
+      </div>
+    );
+  }
   return (
     <div
       className={
@@ -105,7 +145,7 @@ function Specimen() {
 }
 void mountPage({
   route: '/cc-agent',
-  host: { localDb: { sessions: { get: async (id: string) => sessions.find((s) => s.id === id) } } },
+  host: { localDb: { sessions: { get: async (id: string) => [...sessions, ...followSessions].find((s) => s.id === id) } } },
   render: () => (
     <WorktreeProvider>
       <Specimen />

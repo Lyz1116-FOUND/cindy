@@ -1,36 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { InteractionPromptCardShell } from '@/components/interaction-portal';
+import { createGhostDisplayProjection, useGhostDisplayProjection } from '@/cindy-brain/ghostDisplayProjection';
 
 import { RemotePluginUiEnablePrompt } from './RemotePluginUiEnablePrompt';
+
+const EMPTY_ITEMS: Array<{ id: string; name: string; version: string }> = [];
+const uiPromptsProjection = createGhostDisplayProjection(() => window.electronAPI.ghosts.uiPrompts(), EMPTY_ITEMS);
 
 export function PluginUiEnablePrompt({ deviceId }: { deviceId?: string } = {}) {
   return deviceId ? <RemotePluginUiEnablePrompt key={deviceId} deviceId={deviceId} /> : <LocalPluginUiEnablePrompt />;
 }
 function LocalPluginUiEnablePrompt() {
   const { t } = useTranslation();
-  const [items, setItems] = useState<Array<{ id: string; name: string; version: string }>>([]);
+  const items = useGhostDisplayProjection(uiPromptsProjection);
   const [busy, setBusy] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [error, setError] = useState(false);
-  useEffect(() => {
-    let active = true;
-    const refresh = () => {
-      void window.electronAPI.ghosts
-        .uiPrompts()
-        .then((value) => {
-          if (active) setItems(value);
-        })
-        .catch(() => {});
-    };
-    refresh();
-    const off = window.electronAPI.ghosts.onChanged(refresh);
-    return () => {
-      active = false;
-      off();
-    };
-  }, []);
   const item = items[0];
   if (!item && !enabled) return null;
   const showEnabled = enabled && !item;
@@ -66,7 +53,7 @@ function LocalPluginUiEnablePrompt() {
                     if (result.granted) {
                       setEnabled(true);
                     }
-                    setItems((value) => value.filter((entry) => entry.id !== item.id));
+                    uiPromptsProjection.invalidate();
                   } catch {
                     setError(true);
                   } finally {
@@ -83,7 +70,7 @@ function LocalPluginUiEnablePrompt() {
                 onClick={async () => {
                   try {
                     await window.electronAPI.ghosts.deferUiPrompt(item.id, item.version);
-                    setItems((value) => value.filter((entry) => entry.id !== item.id));
+                    uiPromptsProjection.invalidate();
                   } catch {
                     setError(true);
                   }

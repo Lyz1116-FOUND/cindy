@@ -14,13 +14,25 @@
  */
 
 import { createElement, useState } from 'react';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SessionRenameInput } from '../features/cc-agent/SessionRenameInput';
+import { SessionTabsBar } from '../features/cc-agent/workdir-browse/SessionTabsBar';
+import type { Session } from '@/lib/ccAgent.types';
 
 vi.mock('@/lib/makerTransport', () => ({
   regenerateSessionTitleFor: vi.fn(),
+}));
+vi.mock('@/lib/makerChatStore', () => {
+  const running = new Map();
+  return { makerChatStore: { subscribeAll: () => () => {}, getRunningSnapshot: () => running } };
+});
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key === 'routines.builtinFollowUp.name' ? 'Follow assigned sessions (built-in)' : key,
+    i18n: { language: 'en' },
+  }),
 }));
 
 afterEach(() => {
@@ -75,5 +87,44 @@ describe('SessionRenameInput outside pointerdown commits', () => {
     unmount();
     fireEvent.pointerDown(document.body);
     expect(onCommit).not.toHaveBeenCalled();
+  });
+});
+
+// #9580: tab 重命名原来把显示名直接交给 onRename；内置默认名原样确认不能产生写入。
+// unit: 真实 SessionTabsBar + 内存 session；最小失败输入为 en 默认显示名 + Enter/Blur。
+describe('SessionTabsBar built-in follow-up rename', () => {
+  const followUp = {
+    id: 's1', title: '跟进任务', source: 'bot', agentKind: 'codex',
+    companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+  } as Session;
+
+  function renderTabs(onRename: (id: string, title: string) => void) {
+    return render(createElement(SessionTabsBar, {
+      activeSessionId: 's1', sessions: [followUp], canCreateNew: false,
+      onActivate: () => {}, onCreateNew: () => {}, onClose: () => {}, onRename,
+    }));
+  }
+
+  it('does not emit a rename when the localized default title is confirmed unchanged', () => {
+    const onRename = vi.fn();
+    renderTabs(onRename);
+    fireEvent.doubleClick(screen.getByText('Follow assigned sessions (built-in)'));
+    const input = screen.getByRole('textbox');
+    expect(input).toHaveProperty('value', 'Follow assigned sessions (built-in)');
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.blur(input);
+    expect(onRename).not.toHaveBeenCalled();
+  });
+
+  it('still emits a real custom rename once across Enter and Blur', () => {
+    const onRename = vi.fn();
+    renderTabs(onRename);
+    fireEvent.doubleClick(screen.getByText('Follow assigned sessions (built-in)'));
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'My task tracker' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.blur(input);
+    expect(onRename).toHaveBeenCalledTimes(1);
+    expect(onRename).toHaveBeenCalledWith('s1', 'My task tracker');
   });
 });

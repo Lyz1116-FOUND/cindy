@@ -23,7 +23,7 @@
  *   matchMap      sessionId → 命中字符下标数组,供 SessionItem highlight
  *   isFiltering   有非空 query(trim 后)时为 true,用于 ProjectNode 决定是否强制展开
  *
- * 性能:useMemo 依赖 sessions 引用 + query。useProjectGroups 已 memo 化组内
+ * 性能:useMemo 依赖 sessions 引用 + query + 当前翻译函数 t（语言切换时重算）。useProjectGroups 已 memo 化组内
  * sessions,所以重渲染时 sessions 引用稳定 → 只在 query 变化时重算。
  * computeSessionSearchView 在 200 sessions × 5 字符 query 下 < 1ms。
  */
@@ -31,6 +31,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import type { Session } from '@/lib/ccAgent.types';
+import { useStableTranslation as useTranslation } from '@/hooks/useStableTranslation';
 import { computeSessionSearchView } from '../lib/sessionSearch';
 
 export interface UseSessionSearchReturn {
@@ -48,12 +49,13 @@ export interface UseSessionSearchReturn {
 }
 
 export function useSessionSearch(sessions: readonly Session[]): UseSessionSearchReturn {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQueryState] = useState('');
 
   const view = useMemo(
-    () => computeSessionSearchView(sessions, query),
-    [sessions, query],
+    () => computeSessionSearchView(sessions, query, t),
+    [sessions, query, t],
   );
 
   const open = useCallback(() => {

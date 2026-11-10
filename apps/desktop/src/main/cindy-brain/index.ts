@@ -3066,8 +3066,8 @@ export function createGhostSessionTap(sessionId: string): {
 
 /**
  * 用户消息拦截筛查(input coordinator 的 screenUserMessage 依赖真身)。
- * 快路径:没有任何启用意识声明钩子 → 零开销放行(不查 DB 不进网关),
- * 绝大多数用户走这条。任何异常收敛为放行(fail-open),绝不卡发送热路径。
+ * 无启用钩子时不查 DB、不进网关；发现阶段走后台索引/扫描，不在发送热路径同步扫盘。
+ * 任何异常收敛为放行(fail-open),绝不卡发送热路径。
  */
 /**
  * 是否装有**启用中**的 will-user-message 拦截意识(纯本地判定,不触发钩子)。
@@ -3076,11 +3076,9 @@ export function createGhostSessionTap(sessionId: string): {
  * 而拦截钩的全部意义就是不让某些内容到达 AI。这里只问"有没有人在管",不重复询问
  * 钩子本身 —— 重复询问会让 Ghost 对同一条消息被问两次,产生它没预期的副作用。
  */
-export function hasEnabledUserMessageHookGhost(): boolean {
+export async function hasEnabledUserMessageHookGhost(): Promise<boolean> {
   try {
-    return availableGhosts().some(
-      (g) => g.enabled && g.manifest.subscribe?.hooks?.includes('will-user-message'),
-    );
+    return await getGhostManager().hasEnabledHookAsync('will-user-message');
   } catch {
     // 判定不了就按"有人在管"处理:宁可少一个智能标题,也不把内容送出去。
     return true;
@@ -3093,9 +3091,7 @@ export async function screenGhostUserMessage(
 ): Promise<GhostScreenResult> {
   const ownerStamp = getGhostOwnerPushStamp();
   try {
-    const hasHookGhost = availableGhosts().some(
-      (g) => g.enabled && g.manifest.subscribe?.hooks?.includes('will-user-message'),
-    );
+    const hasHookGhost = await hasEnabledUserMessageHookGhost();
     if (!hasHookGhost) return { action: 'allow' };
     // retry(DB 未就绪)也放行:拦截是尽力而为的旁路,fail-open 不挡发送。
     if ((await isGhostEligibleSession(sessionId)).outcome !== 'eligible')
@@ -3151,10 +3147,9 @@ function publishedRouteModels(ghost: InstalledGhost) {
   return parsed.ok ? parsed.models.filter((model) => model.target.type === 'route') : [];
 }
 
-/** 新任务模型选择器里的插件模型：只读落盘的列表，不调用插件。 */
-export function ghostPickerModels(): GhostPickerModel[] {
+function projectGhostPickerModels(ghosts: InstalledGhost[]): GhostPickerModel[] {
   const { uiLocale } = currentGhostAppContext().context;
-  return availableGhosts().flatMap((ghost) => publishedRouteModels(ghost).map((model) => ({
+  return ghosts.flatMap((ghost) => publishedRouteModels(ghost).map((model) => ({
     pluginId: installedGhostStoragePart(ghost),
     pluginName: ghost.manifest.name,
     ...(ghost.iconDataUrl ? { pluginIcon: ghost.iconDataUrl } : {}),
@@ -3163,9 +3158,14 @@ export function ghostPickerModels(): GhostPickerModel[] {
   })));
 }
 
+/** 新任务模型选择器里的插件模型：只读落盘的列表，不调用插件。 */
+export function ghostPickerModels(): GhostPickerModel[] {
+  return projectGhostPickerModels(availableGhosts());
+}
+
 /** 某插件看到的控制节点目录(只读；不含其它插件信息)。 */
 export function ghostControlPointInfo(ghostId: string): GhostControlPointInfo[] {
-  const ghost = findInstalledGhostByInstanceId(availableGhosts(), ghostId);
+  const ghost = findGhostForInstanceId(ghostId);
   const declared = new Set(ghost?.manifest.subscribe?.hooks ?? []);
   return GHOST_CONTROL_POINT_IDS.map((point) => ({
     id: point,
@@ -3239,11 +3239,15 @@ export async function routeGhostNewTask(pluginId: string, data: GhostStartTaskPo
   return kept('unavailable-route');
 }
 
-/** 任务「前置检查」里可选的插件:已启用、声明了该节点且用户已批准。 */
-export function ghostControlPointCandidates(point: GhostControlPointId): GhostControlPointCandidate[] {
-  return availableGhosts()
+function projectGhostControlPointCandidates(ghosts: InstalledGhost[], point: GhostControlPointId): GhostControlPointCandidate[] {
+  return ghosts
     .filter((ghost) => ghostControlPointActive(ghost, point))
     .map((ghost) => ({ pluginId: installedGhostStoragePart(ghost), name: ghost.manifest.name }));
+}
+
+/** 任务「前置检查」里可选的插件:已启用、声明了该节点且用户已批准。 */
+export function ghostControlPointCandidates(point: GhostControlPointId): GhostControlPointCandidate[] {
+  return projectGhostControlPointCandidates(availableGhosts(), point);
 }
 
 /** 被拦通知广播(register.ts 的 onUserMessageBlocked 依赖真身)。
@@ -10924,9 +10928,9 @@ export function registerGhostIpc(): void {
     requireGhostAvailableForActiveSession(id);
     return requestPluginUiApproval(id, event.sender, true);
   });
-  ipcMain.handle('ghosts:ui-prompts', event => {
+  ipcMain.handle('ghosts:ui-prompts', async event => {
     assertTrustedAppRendererEvent(event);
-    return getGhostManager().list().filter(ghost => ghost.enabled && pluginHasToolUi(ghost.manifest) &&
+    return (await listAvailableGhostsAsync()).filter(ghost => ghost.enabled && pluginHasToolUi(ghost.manifest) &&
       ghost.approval.state === 'approved' && ghost.uiCapabilityApproved !== true &&
       !pluginUiPromptSuppressed(installedGhostStoragePart(ghost), ghost.manifest.version))
       .map(ghost => ({ id: installedGhostStoragePart(ghost), name: ghost.manifest.name, version: ghost.manifest.version }));
@@ -10973,16 +10977,16 @@ export function registerGhostIpc(): void {
   });
 
   // 新任务模型选择器里的插件模型。
-  ipcMain.handle('ghosts:models:list', (event) => {
+  ipcMain.handle('ghosts:models:list', async event => {
     assertTrustedAppRendererEvent(event);
-    return ghostPickerModels();
+    return projectGhostPickerModels(await listAvailableGhostsAsync());
   });
 
   // 定时任务 / 例行任务编辑页的插件下拉。
-  ipcMain.handle('ghosts:control-points:candidates', (event, point: unknown) => {
+  ipcMain.handle('ghosts:control-points:candidates', async (event, point: unknown) => {
     assertTrustedAppRendererEvent(event);
     if (!isGhostControlPointId(point)) throwIpcError('INVALID_PARAMS', 'unknown control point');
-    return ghostControlPointCandidates(point);
+    return projectGhostControlPointCandidates(await listAvailableGhostsAsync(), point);
   });
 
   ipcMain.handle('ghosts:request-task-approval', async (event, id: unknown, capability: unknown) => {

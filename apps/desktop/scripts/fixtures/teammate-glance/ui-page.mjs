@@ -13,8 +13,8 @@ export default {
     'Live todo/delegation data, cloud companion home switching, remote teammates over device-link, sending the quoted todo or 帮我查查, toggling the daily check, opening files',
   stubs: {
     'src/renderer/features/device-link/refreshRemoteSessions': `export const refreshRemoteDeviceSessions=async()=> 'done';`,
-    'src/renderer/hooks/useCCSessions': `const tasks=[{id:'task-1',title:'整理项目反馈',status:'active',updatedAt:'2026-10-28T10:00:00Z'}, {id:'task-2',title:'完善手机任务入口',status:'active',updatedAt:'2026-10-28T09:00:00Z'}];export const useCCSessions=()=>({sessions:${data}.case==='new'?[]:tasks});`,
-    'src/renderer/features/bots/botFollowScopes': { partial: `export const useTaskCreatorIndex=()=>new Map(['task-1','task-2'].map(id=>[JSON.stringify([null,id]),new Set([JSON.stringify(['teammate','cindy'])])]));` },
+    'src/renderer/hooks/useCCSessions': `const tasks=[{id:'task-1',title:'整理项目反馈',status:'active',updatedAt:'2026-10-28T10:00:00Z'}, {id:'task-2',title:'完善手机任务入口',status:'active',updatedAt:'2026-10-28T09:00:00Z'}];const followTasks=[{id:'follow-up',title:'跟进任务',source:'bot',status:'active',updatedAt:'2026-10-28T10:00:00Z',companion:{id:'cindy-default',role:'routine',routineId:'builtin-follow-up-cindy-default'}},{id:'custom-follow-up',title:'My task tracker',source:'bot',status:'active',updatedAt:'2026-10-28T09:00:00Z',companion:{id:'cindy-default',role:'routine',routineId:'builtin-follow-up-cindy-default'}}];export const useCCSessions=()=>({sessions:${data}.case==='new'?[]:${data}.case==='follow-up'?followTasks:tasks});`,
+    'src/renderer/features/bots/botFollowScopes': { partial: `const creators=new Set([JSON.stringify(['teammate','cindy'])]);export const useTaskCreatorIndex=()=>new Map([...['task-1','task-2','follow-up','custom-follow-up'].map(id=>[JSON.stringify([null,id]),creators]),['creator:'+JSON.stringify([null,'cindy-default']),creators]]);` },
     'src/renderer/contexts/PrRefsContext': { partial: `export const usePrRefsForSessions=ids=>ids.length?[{sessionId:'task-1',owner:'example',repo:'app',prNumber:42,lastSeenAt:${now + 1}}]:[]; export const usePrStatuses=()=>({statuses:new Map([['example/app#42',{ok:true,status:'merged',title:'修复伙伴任务的跨设备入口'}]]),successfulStatuses:new Map()});` },
     'src/renderer/lib/sessionAttentionStore': { partial: `export const useSessionAttentionKind=id=>id==='task-1'?'done':undefined;` },
     'src/renderer/features/bots/botStore': {
@@ -37,6 +37,7 @@ export default {
     menu: { about: 'Right-clicking a todo offers only Delete' },
     new: { about: 'Empty teammate: only Computers; no todo suggestions or outputs' },
     activity: { about: 'No todos, attributed recent tasks, unread result and true PR title' },
+    'follow-up': { about: 'Built-in follow-up default title localized; custom task name preserved' },
     routines: { about: 'Never-run and paused routines mixed with ordinary tasks; direct timer icons in one list' },
   },
   async ready(page) {
@@ -44,7 +45,7 @@ export default {
   },
   async check(page, ui) {
     const button = page.getByTestId('bot-glance-button');
-    if (ui.case !== 'new' && ui.case !== 'activity' && ui.case !== 'routines') {
+    if (ui.case !== 'new' && ui.case !== 'activity' && ui.case !== 'routines' && ui.case !== 'follow-up') {
       await page.waitForFunction(() =>
         document.querySelector('[data-testid="bot-glance-button"] span[aria-hidden]') !== null,
       );
@@ -72,6 +73,15 @@ export default {
       assert.equal(await page.getByTestId('bot-glance-daily-check').count(), 0, 'no daily prompt');
       assert.equal(await page.getByTestId('bot-glance-output').count(), 0, 'no outputs block');
       assert.equal(await page.getByTestId('bot-glance-computer').count(), 1, 'only this computer');
+      await ui.capture('open');
+      return;
+    }
+    if (ui.case === 'follow-up') {
+      const rows = page.getByTestId('bot-glance-task');
+      await rows.first().waitFor();
+      assert.equal(await rows.count(), 2, 'built-in follow-up runs stay in the recent task list');
+      assert.equal(await rows.nth(0).locator('[title]').first().getAttribute('title'), await ui.t('routines.builtinFollowUp.name'));
+      assert.equal(await rows.nth(1).locator('[title]').first().getAttribute('title'), 'My task tracker');
       await ui.capture('open');
       return;
     }

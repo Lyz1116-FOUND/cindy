@@ -4,40 +4,26 @@
  */
 import type { PluginModelRouteNote } from '@/lib/ccAgent.types';
 import { createLogger } from '@/lib/logger';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createGhostDisplayProjection, useGhostDisplayProjection } from '@/cindy-brain/ghostDisplayProjection';
 
 import type { GhostModelRoute, GhostPickerModel, GhostStartTaskRouteResult } from '../../../shared/ghost';
 
 const log = createLogger('plugin-model-route');
 
 const NO_PLUGIN_MODELS: GhostPickerModel[] = [];
+const pluginModelsProjection = createGhostDisplayProjection(() => window.electronAPI.ghosts.listPickerModels(), NO_PLUGIN_MODELS);
 
 /** 选择器里的插件模型。取不到就是没有，选择器和没装插件时一样。 */
 export function usePluginModels(enabled: boolean): GhostPickerModel[] {
   const { i18n } = useTranslation();
-  const [models, setModels] = useState<GhostPickerModel[]>(NO_PLUGIN_MODELS);
+  const models = useGhostDisplayProjection(pluginModelsProjection, enabled);
+  const lastLanguage = useRef(i18n.language);
   useEffect(() => {
-    if (!enabled) {
-      setModels(NO_PLUGIN_MODELS);
-      return;
-    }
-    let alive = true;
-    const refresh = () => {
-      window.electronAPI.ghosts.listPickerModels()
-        .then((list) => { if (alive) setModels(list); })
-        .catch((err: unknown) => {
-          log.warn('plugin models unavailable', err);
-          if (alive) setModels(NO_PLUGIN_MODELS);
-        });
-    };
-    refresh();
-    // 插件装上、更新、启停或发布新列表时都会广播。
-    const off = window.electronAPI.ghosts.onChanged(refresh);
-    return () => {
-      alive = false;
-      off();
-    };
+    if (lastLanguage.current === i18n.language) return;
+    lastLanguage.current = i18n.language;
+    if (enabled) pluginModelsProjection.invalidate();
   }, [enabled, i18n.language]);
   return models;
 }

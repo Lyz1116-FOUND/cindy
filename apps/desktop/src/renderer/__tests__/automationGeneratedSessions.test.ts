@@ -30,6 +30,8 @@ import {
   type AutomationScheduleSessionInfo,
 } from '@/features/cc-agent/lib/automationSidebarGrouping';
 import { groupSessions } from '@/features/cc-agent/lib/projectGrouping';
+import { getSessionDisplayTitle } from '@/features/cc-agent/lib/sessionDisplayTitle';
+import { FOLLOW_UP_ROUTINE_NAME } from '../../shared/botAutonomy';
 import {
   getAutomationSessionDisplayTitle,
   groupScheduledSessions,
@@ -479,6 +481,40 @@ describe('automation-generated sessions', () => {
     if (entries[0].kind !== 'automation-group') throw new Error('expected automation group');
     expect(entries[0].group.scheduleId).toBeUndefined();
     expect(entries[0].group.sessions.map((session) => session.id)).toEqual(['brief-2', 'brief-1']);
+  });
+
+  // #9580: 原分组只验证普通规则名，未覆盖内置默认名的单条/多条投影。
+  // unit: 合成 fresh 运行经真实分组与标题入口；最小失败输入为同规则两条默认名任务 + en。
+  // 分组身份不能随译文改变；组头可见文字另由真实 AutomationSessionGroupItem 用例覆盖。
+  it('keeps built-in follow-up group identity stable while projecting each run title', () => {
+    const sessions = ['run-2', 'run-1'].map((id) => makeSession({
+      id,
+      title: FOLLOW_UP_ROUTINE_NAME,
+      source: 'bot',
+      companion: { id: 'analysis-bot', role: 'routine', routineId: 'builtin-follow-up-analysis-bot' },
+      deviceLinkDeviceId: 'remote-device',
+    }));
+    const entries = groupAutomationSidebarEntries(sessions, { notifications: new Set() });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      kind: 'automation-group',
+      group: {
+        id: 'routine:analysis-bot:builtin-follow-up-analysis-bot:device:remote-device',
+        legacyId: 'routine:analysis-bot:builtin-follow-up-analysis-bot',
+        title: FOLLOW_UP_ROUTINE_NAME,
+        teammateRoutine: { botId: 'analysis-bot', routineId: 'builtin-follow-up-analysis-bot' },
+        sessions,
+      },
+    });
+    for (const session of sessions) {
+      expect(getSessionDisplayTitle(session, '', () => 'Follow assigned sessions (built-in)')).toBe(
+        'Follow assigned sessions (built-in)',
+      );
+      expect(session.title).toBe(FOLLOW_UP_ROUTINE_NAME);
+    }
+    expect(groupAutomationSidebarEntries([sessions[0]], { notifications: new Set() })).toEqual([
+      { kind: 'session', session: sessions[0] },
+    ]);
   });
 
   it('keeps the task represented by the header in expanded children', () => {

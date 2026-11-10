@@ -3,7 +3,7 @@
  * 生成 apps/desktop/src/renderer/i18n/crossLocaleStrings.generated.json。
  *
  * Desktop renderer 只静态打包英文语言包，其余语言按需加载。少数功能要在「非当前语言」下
- * 同步读取文案：跨语言识别 Cindy Make 旧版默认任务标题、按中文名搜索模型。这里从各语言
+ * 同步读取文案：跨语言识别 Cindy Make 旧版默认任务标题与内置跟进默认显示名、按中文名搜索模型。这里从各语言
  * common.json 摘出这些 key，生成一个很小的常驻表。正本仍是 locales/<语言>/common.json；
  * `pnpm check:i18n` 会校验生成结果是否最新。
  *
@@ -24,6 +24,7 @@ export const CROSS_LOCALE_KEYS = [
   'cindyMake.merge.taskTitle',
   'cindyMake.history.mergeTaskTitle',
   'cindyMake.history.revertTaskTitle',
+  'routines.builtinFollowUp.name',
   'modelNames',
 ];
 

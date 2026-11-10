@@ -3,6 +3,8 @@
  *
  * 覆盖:基础匹配 / 不匹配 / 空 query / 评分维度 / 排序稳定性 / 高亮 indices 正确性 /
  * 多语言脚本词边界 / 边界 case。
+ * #9580: 原标题与显示名共用评分器，原单候选覆盖无法防止别名重复或下标取自另一候选。
+ * unit: 直接调用 fuzzyFilterAndRank；最小失败输入为同一对象的两个候选，较优命中在第二个。
  */
 
 import { describe, expect, it } from 'vitest';
@@ -110,6 +112,27 @@ describe('fuzzyFilterAndRank', () => {
     expect(fix).toBeDefined();
     expect(fix!.indices.length).toBe(3);
     expect(fix!.indices).toEqual([0, 1, 2]);
+  });
+
+  it('uses the best title candidate once, with indices from that same candidate', () => {
+    const original = { id: 'original', titles: ['xx fix', 'fix'] };
+    const other = { id: 'other', titles: ['x fix'] };
+    const out = fuzzyFilterAndRank([original, other], 'fix', (item) => item.titles);
+    expect(out).toHaveLength(2);
+    expect(out[0].item).toBe(original);
+    expect(out[0].indices).toEqual([0, 1, 2]);
+    expect(out[1].item).toBe(other);
+    expect(out[1].score).toBeLessThan(out[0].score);
+  });
+
+  it('preserves the first candidate on equal scores and does not duplicate empty-query results', () => {
+    const original = { id: 'original', titles: ['fix', 'fix'] };
+    expect(fuzzyFilterAndRank([original], 'fix', (item) => item.titles)).toEqual([
+      { item: original, score: fuzzyMatch('fix', 'fix')!.score, indices: [0, 1, 2] },
+    ]);
+    expect(fuzzyFilterAndRank([original], '', (item) => item.titles)).toEqual([
+      { item: original, score: 0, indices: [] },
+    ]);
   });
 
   it('is stable for equal-score ties (preserves input order)', () => {

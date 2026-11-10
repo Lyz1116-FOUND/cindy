@@ -202,7 +202,7 @@ import {
   viewedPriorityHold,
 } from './sidebar/sections/ProjectsSection';
 import { advanceViewedPriorityHold, partitionCindyMakeSessions, sortSessionsForMainList } from './lib/mainListModel';
-import { toStoredSessionTitle } from './lib/sessionDisplayTitle';
+import { isBuiltinFollowUpDefaultSession, toStoredSessionTitle } from './lib/sessionDisplayTitle';
 import {
   getVisibleSidebarSessionIds,
   pickSessionIdAfterRemoval,
@@ -2933,6 +2933,8 @@ function ExpandedView({
       // 会话已剥掉 `[Schedule] ` 前缀),直接落库会让它从 automation 分组里消失。提交前
       // 把前缀还原回去(PR #1031 review P1)。
       const newTitle = session ? toStoredSessionTitle(session, editedTitle) : editedTitle;
+      // 内置默认名原样确认（含编辑中切语言）不产生写入，也不标记为手动改名。
+      if (session && newTitle === session.title && isBuiltinFollowUpDefaultSession(session)) return;
       // 取旧值用于失败回滚，乐观先 patch（不刷整列表，列表顺序保持稳定）
       // 保持读 sessions(而非 sessionsById):后者含 remoteProjectSessions,换源会连带
       // 改变远程会话的回滚行为,不在本次修复范围内。

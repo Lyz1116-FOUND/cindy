@@ -134,14 +134,14 @@ const manuallyRenamed = new Set<string>();
  * 是否装有启用中的 will-user-message 拦截意识。由 register 注入(避免
  * maker-ipc → cindy-brain 的额外静态依赖),未注入时按"没有"处理。
  */
-let isUserMessageScreeningActive: (() => boolean) | null = null;
+let isUserMessageScreeningActive: (() => boolean | Promise<boolean>) | null = null;
 
 /**
  * 接上 DB 侧的改名通知与拦截意识探针。register 时调用一次(重复调用幂等)。
  * 放在这里而不是 sessions.ts 自己调,是因为依赖方向只能是 maker-ipc → localDb。
  */
 export function registerSessionAutoTitleHooks(hooks?: {
-  isUserMessageScreeningActive?: () => boolean;
+  isUserMessageScreeningActive?: () => boolean | Promise<boolean>;
 }): void {
   setOnUserSessionTitleWritten((sessionId) => {
     manuallyRenamed.add(sessionId);
@@ -290,7 +290,7 @@ async function runUnsynchronized(
   // 这里刻意**不**重新询问钩子本身:同一条消息被问两次会让 Ghost 产生它没预期的
   // 副作用(计数、日志、二次改写)。要给这类用户恢复智能标题,正解是让
   // coordinator 在筛查通过后再触发一次起名,那是独立于本 PR 的改动。
-  if (isUserMessageScreeningActive?.()) {
+  if (await isUserMessageScreeningActive?.()) {
     return { applied: placeholderLive, done: placeholderLive };
   }
 

@@ -44,7 +44,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { AgentKind, Session } from '@/lib/ccAgent.types';
 import { makerChatStore } from '@/lib/makerChatStore';
-import { getSessionDisplayTitle, toStoredSessionTitle } from '../lib/sessionDisplayTitle';
+import { getSessionDisplayTitle, isBuiltinFollowUpDefaultSession, toStoredSessionTitle } from '../lib/sessionDisplayTitle';
 
 export interface SessionTabsBarProps {
   /** 当前 URL :sessionId 指向的 session；null 表示无 active（极少出现）。 */
@@ -135,7 +135,9 @@ export function SessionTabsBar({
     if (!trimmed || trimmed === original || trimmed === displayed) return;
     // 预填是显示标题(legacy automation 会话已剥掉 `[Schedule] ` 前缀),落库前还原,
     // 否则会话会从 automation 分组里消失(PR #1031 review P1)。
-    onRename(id, target ? toStoredSessionTitle(target, trimmed) : trimmed);
+    const stored = target ? toStoredSessionTitle(target, trimmed) : trimmed;
+    if (target && stored === original && isBuiltinFollowUpDefaultSession(target)) return;
+    onRename(id, stored);
   }, [renamingId, editValue, sessions, onRename, unnamedLabel, t]);
 
   // 进编辑态后自动 focus + 全选 input。

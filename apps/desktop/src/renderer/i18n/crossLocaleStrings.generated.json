@@ -20,7 +20,8 @@
     "modelNames.manufacturers.tencent": "Tencent",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "Z.ai"
+    "modelNames.manufacturers.zai": "Z.ai",
+    "routines.builtinFollowUp.name": "Zugewiesene Sitzungen verfolgen (integriert)"
   },
   "en": {
     "cindyMake.history.mergeTaskTitle": "Resolve Integration Conflicts",
@@ -43,7 +44,8 @@
     "modelNames.manufacturers.tencent": "Tencent",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "Z.ai"
+    "modelNames.manufacturers.zai": "Z.ai",
+    "routines.builtinFollowUp.name": "Follow assigned sessions (built-in)"
   },
   "es": {
     "cindyMake.history.mergeTaskTitle": "Resolver conflictos de integración",
@@ -66,7 +68,8 @@
     "modelNames.manufacturers.tencent": "Tencent",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "Z.ai"
+    "modelNames.manufacturers.zai": "Z.ai",
+    "routines.builtinFollowUp.name": "Seguimiento de sesiones asignadas (integrado)"
   },
   "fr": {
     "cindyMake.history.mergeTaskTitle": "Résoudre les conflits d'intégration",
@@ -89,7 +92,8 @@
     "modelNames.manufacturers.tencent": "Tencent",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "Z.ai"
+    "modelNames.manufacturers.zai": "Z.ai",
+    "routines.builtinFollowUp.name": "Suivre les sessions assignées (intégrée)"
   },
   "ja": {
     "cindyMake.history.mergeTaskTitle": "取り込み時の競合を解決",
@@ -112,7 +116,8 @@
     "modelNames.manufacturers.tencent": "Tencent",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "Z.ai"
+    "modelNames.manufacturers.zai": "Z.ai",
+    "routines.builtinFollowUp.name": "担当セッションのフォロー（標準）"
   },
   "ko": {
     "cindyMake.history.mergeTaskTitle": "반영 충돌 해결",
@@ -135,7 +140,8 @@
     "modelNames.manufacturers.tencent": "Tencent",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "Z.ai"
+    "modelNames.manufacturers.zai": "Z.ai",
+    "routines.builtinFollowUp.name": "담당 세션 후속 확인 (기본)"
   },
   "pt-BR": {
     "cindyMake.history.mergeTaskTitle": "Resolver conflitos de integração",
@@ -158,7 +164,8 @@
     "modelNames.manufacturers.tencent": "Tencent",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "Z.ai"
+    "modelNames.manufacturers.zai": "Z.ai",
+    "routines.builtinFollowUp.name": "Acompanhar sessões atribuídas (integrado)"
   },
   "pt-PT": {
     "cindyMake.history.mergeTaskTitle": "Resolver conflitos de integração",
@@ -181,7 +188,8 @@
     "modelNames.manufacturers.tencent": "Tencent",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "Z.ai"
+    "modelNames.manufacturers.zai": "Z.ai",
+    "routines.builtinFollowUp.name": "Acompanhar sessões atribuídas (integrado)"
   },
   "zh-CN": {
     "cindyMake.history.mergeTaskTitle": "处理合入冲突",
@@ -204,7 +212,8 @@
     "modelNames.manufacturers.tencent": "腾讯",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "智谱"
+    "modelNames.manufacturers.zai": "智谱",
+    "routines.builtinFollowUp.name": "跟进已接手的任务（内置）"
   },
   "zh-Hans-x-lzh": {
     "cindyMake.history.mergeTaskTitle": "理合入冲突",
@@ -227,7 +236,8 @@
     "modelNames.manufacturers.tencent": "腾讯",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "智谱"
+    "modelNames.manufacturers.zai": "智谱",
+    "routines.builtinFollowUp.name": "跟进已接之差事（内置）"
   },
   "zh-Hant-x-lzh": {
     "cindyMake.history.mergeTaskTitle": "理合入衝突",
@@ -250,7 +260,8 @@
     "modelNames.manufacturers.tencent": "騰訊",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "智譜"
+    "modelNames.manufacturers.zai": "智譜",
+    "routines.builtinFollowUp.name": "跟進已接之差事（內建）"
   },
   "zh-TW": {
     "cindyMake.history.mergeTaskTitle": "處理合入衝突",
@@ -273,6 +284,7 @@
     "modelNames.manufacturers.tencent": "騰訊",
     "modelNames.manufacturers.voyage": "Voyage",
     "modelNames.manufacturers.xai": "xAI",
-    "modelNames.manufacturers.zai": "智譜"
+    "modelNames.manufacturers.zai": "智譜",
+    "routines.builtinFollowUp.name": "跟進已接手的任務（內建）"
   }
 }

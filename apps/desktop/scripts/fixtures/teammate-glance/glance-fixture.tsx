@@ -19,7 +19,7 @@ const today = todoLocalDate(new Date(), zone);
 const friday = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
 
 function items(caseName: string): TeammateTodo[] {
-  if (caseName === 'new' || caseName === 'activity' || caseName === 'routines') return [];
+  if (caseName === 'new' || caseName === 'activity' || caseName === 'routines' || caseName === 'follow-up') return [];
   return [
     todo('t1', 'Reply to MagicLizi about the release date 回 MagicLizi 的邮件，确认发版时间', 'mail', 'MagicLizi', {
       sourceDeadline: { kind: 'date', date: today, timeZone: zone },

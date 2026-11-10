@@ -50,6 +50,7 @@ import { useRegisterContentHeader } from '../feature-context';
 import { useSessionLifecycleActions } from './hooks/useSessionLifecycleActions';
 import {
   getSessionDisplayTitle,
+  isBuiltinFollowUpDefaultSession,
   isEmptyDraftSession,
   toStoredSessionTitle,
 } from './lib/sessionDisplayTitle';
@@ -300,6 +301,7 @@ export function SessionContentHeader({
       // 否则 isAutomationGeneratedSession 认不出它、会话从 automation 分组消失
       // (PR #1031 review P1)。
       const stored = toStoredSessionTitle(session, trimmed);
+      if (stored === session.title && isBuiltinFollowUpDefaultSession(session)) return;
       const oldTitle = session.title;
       patchLocal(session.id, { title: stored });
       try {

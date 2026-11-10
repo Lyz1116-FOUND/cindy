@@ -43,6 +43,7 @@ const h = vi.hoisted(() => ({
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) =>
+      key === 'routines.builtinFollowUp.name' ? 'Follow assigned sessions (built-in)' :
       options && 'count' in options ? `${key}:${String(options.count)}` : key,
     i18n: { language: 'en' },
   }),
@@ -68,8 +69,16 @@ vi.mock('@/features/device-link/remoteProjectsStore', () => ({
 }));
 vi.mock('../botFollowScopes', async importOriginal => {
   const actual = await importOriginal<typeof import('../botFollowScopes')>();
-  return { ...actual, useTaskCreatorIndex: () => new Map(h.scopes.map(scope =>
-    [JSON.stringify([scope.deviceId ?? null, scope.sessionId]), new Set([JSON.stringify([null, 'bot-1'])])])) };
+  return { ...actual, useTaskCreatorIndex: () => {
+    const creators = new Set([JSON.stringify([null, 'bot-1'])]);
+    const index = new Map(h.scopes.map(scope =>
+      [JSON.stringify([scope.deviceId ?? null, scope.sessionId]), creators]));
+    for (const scope of h.scopes) {
+      if (typeof scope.botId === 'string')
+        index.set(`creator:${JSON.stringify([scope.deviceId ?? null, scope.botId])}`, creators);
+    }
+    return index;
+  } };
 });
 vi.mock('@/lib/sessionAttentionStore', () => ({ useSessionAttentionKind: (id: string) => h.attention.get(id) }));
 vi.mock('@/contexts/PrRefsContext', () => ({
@@ -185,6 +194,24 @@ describe('BotGlanceButton', () => {
     expect(screen.getByLabelText('bots.glance.unread')).toBeTruthy();
     fireEvent.click(screen.getByText('磁盘低空间自动清理'));
     expect(h.navigate).toHaveBeenCalledWith('/bots/bot-1?settings=1&settingsPage=routines');
+  });
+
+  // #9580: 内置跟进不占规则行，其任务标题原来直接漏出存储默认名；自定义名不能被投影覆盖。
+  it('localizes built-in follow-up recent task titles and preserves custom names', async () => {
+    h.routines = [
+      { id: 'builtin-follow-up-bot-1', name: '跟进任务', builtin: 'follow-up', updatedAt: 40 },
+    ];
+    h.sessions = [
+      { id: 'follow', title: '跟进任务', source: 'bot', status: 'active', updatedAt: new Date(30).toISOString(),
+        companion: { id: bot.id, role: 'routine', routineId: 'builtin-follow-up-bot-1' } },
+      { id: 'custom', title: 'My task tracker', source: 'bot', status: 'active', updatedAt: new Date(20).toISOString(),
+        companion: { id: bot.id, role: 'routine', routineId: 'builtin-follow-up-bot-1' } },
+    ];
+    h.scopes = h.sessions.map(task => ({ sessionId: task.id, botId: bot.id }));
+    await openGlance();
+    expect(screen.getAllByTestId('bot-glance-task').map(row => row.querySelector('[title]')?.getAttribute('title')))
+      .toEqual(['Follow assigned sessions (built-in)', 'My task tracker']);
+    expect(screen.queryByText('跟进任务')).toBeNull();
   });
 
   // PR #8532 review: 31 fresh runs used to consume the raw 30-session window before

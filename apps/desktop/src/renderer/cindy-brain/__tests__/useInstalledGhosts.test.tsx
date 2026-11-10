@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { InstalledGhost } from '../../../shared/ghost';
 import { useWorkdirDisabledGhostIds } from '../ghostWorkdirFilter';
+import { createGhostDisplayProjection, useGhostDisplayProjection } from '../ghostDisplayProjection';
 import {
   __resetInstalledGhostsStoreForTest,
   useInstalledGhosts,
@@ -206,5 +207,42 @@ describe('useInstalledGhosts(窗口级共享缓存)', () => {
     (window as unknown as { electronAPI: unknown }).electronAPI = {};
     render(<Probe label="a" />);
     expect(screen.getByTestId('a').textContent).toBe('');
+  });
+});
+
+// #9580 关联审计：展示投影必须窗口级共享，不能按组件/通知叠加全量读取。
+describe('plugin display projections', () => {
+  it('shared projection reads once for many consumers and once per notification', async () => {
+    const read = vi.fn(async () => ['ok']);
+    const projection = createGhostDisplayProjection(read, [] as string[]);
+    const a = renderHook(() => useGhostDisplayProjection(projection));
+    const b = renderHook(() => useGhostDisplayProjection(projection));
+    await act(async () => {});
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(a.result.current).toEqual(['ok']);
+    expect(b.result.current).toEqual(['ok']);
+    act(() => changedCbs.forEach((cb) => cb({ ghosts: [] })));
+    await act(async () => {});
+    expect(read).toHaveBeenCalledTimes(2);
+    a.unmount();
+    b.unmount();
+    projection.__resetForTest();
+  });
+
+  it('workdir policy is shared across consumers and not re-read on roster change', async () => {
+    const workdirPrefs = vi.fn(async () => ({ workdirKey: '/project', disabled: ['a'] }));
+    Object.assign(window.electronAPI.ghosts, { workdirPrefs });
+    const ghosts = [ghost('a')];
+    const a = renderHook(({ gs }) => useWorkdirDisabledGhostIds('/project', gs), { initialProps: { gs: ghosts } });
+    const b = renderHook(() => useWorkdirDisabledGhostIds('/project', ghosts));
+    await act(async () => {});
+    expect(workdirPrefs).toHaveBeenCalledTimes(1);
+    a.rerender({ gs: [...ghosts, ghost('b')] });
+    await act(async () => {});
+    expect(workdirPrefs).toHaveBeenCalledTimes(1);
+    expect([...a.result.current!]).toEqual(['a']);
+    expect([...b.result.current!]).toEqual(['a']);
+    a.unmount();
+    b.unmount();
   });
 });

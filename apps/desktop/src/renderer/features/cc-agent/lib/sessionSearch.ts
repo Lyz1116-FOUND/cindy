@@ -15,6 +15,11 @@
 
 import type { Session } from '@/lib/ccAgent.types';
 import { fuzzyFilterAndRank } from './fuzzyMatch';
+import {
+  getBuiltinFollowUpDisplayTitle,
+  isBuiltinFollowUpDefaultSession,
+  type TranslateSessionTitle,
+} from './sessionDisplayTitle';
 
 export interface SessionSearchView {
   /** 过滤 + 排序后的 session 列表;无 query 时为入参原引用。 */
@@ -30,6 +35,7 @@ const EMPTY_MATCH_MAP: ReadonlyMap<string, readonly number[]> = new Map();
 export function computeSessionSearchView(
   sessions: readonly Session[],
   query: string,
+  translate?: TranslateSessionTitle,
 ): SessionSearchView {
   const trimmed = query.trim();
   const isFiltering = trimmed.length > 0;
@@ -38,7 +44,16 @@ export function computeSessionSearchView(
     return { filtered: sessions, matchMap: EMPTY_MATCH_MAP, isFiltering: false };
   }
 
-  const ranked = fuzzyFilterAndRank(sessions, trimmed, (s) => s.title);
+  const ranked = fuzzyFilterAndRank(sessions, trimmed, (session) => {
+    const titles = [session.title];
+    if (isBuiltinFollowUpDefaultSession(session)) {
+      const displayTitle = getBuiltinFollowUpDisplayTitle(
+        session.title, session.companion?.routineId, translate,
+      );
+      if (displayTitle !== session.title) titles.push(displayTitle);
+    }
+    return titles;
+  });
   const matchMap = new Map<string, readonly number[]>();
   for (let i = 0; i < ranked.length; i += 1) {
     matchMap.set(ranked[i].item.id, ranked[i].indices);
