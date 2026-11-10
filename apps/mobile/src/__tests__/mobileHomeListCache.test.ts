@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RemoteSession } from '@/session/types';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
+import { FOLLOW_UP_ROUTINE_NAME } from '@cindy/maker-shared/session-title';
 
 // 内存版 AsyncStorage:覆盖 getItem/setItem/removeItem,贴近真实 RN API(与 mobileSessionMessageCache.test 同套路)。
 const store = vi.hoisted(() => new Map<string, string>());
@@ -68,6 +70,23 @@ describe('mobileHomeListCache', () => {
     await cacheHomeListSnapshot(USER_ID, [makeSession('routine', 'mac', { source: 'bot', companion, taskTeammate })]);
     const [cached] = await getCachedHomeListSnapshot(USER_ID);
     expect(cached.sessions[0]).toMatchObject({ companion, taskTeammate });
+  });
+
+  // #9580 边界：已有冷启动用例只测身份/普通字段，没有同名标题的改名来源。
+  // unit：真实缓存写读后交给列表标题入口；最小失败输入为 titleCustomized=true/false 的内置默认名。
+  it.each([true, false])('preserves titleCustomized=%s across cold starts instead of repainting the stored default title', async (titleCustomized) => {
+    const { cacheHomeListSnapshot, getCachedHomeListSnapshot } = await import('@/session/mobileHomeListCache');
+    await cacheHomeListSnapshot(USER_ID, [makeSession('follow', 'mac', {
+      title: FOLLOW_UP_ROUTINE_NAME,
+      titleCustomized,
+      source: 'bot',
+      companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+    })]);
+
+    const [cached] = await getCachedHomeListSnapshot(USER_ID);
+    expect(cached.sessions[0].titleCustomized).toBe(titleCustomized);
+    expect(remoteSessionDisplayTitle(cached.sessions[0], 'Untitled', 'Follow assigned sessions (built-in)'))
+      .toBe(titleCustomized ? FOLLOW_UP_ROUTINE_NAME : 'Follow assigned sessions (built-in)');
   });
 
   it('round-trips a grouped device snapshot from a flat stamped session list', async () => {

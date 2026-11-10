@@ -453,7 +453,6 @@ export function BotRoutines({
           <label className="block space-y-2">
             <span className="text-[var(--text-secondary)]">{t('routines.name')}</span>
             <Input
-              disabled={!!saved?.builtin}
               autoFocus={selected === 'new'}
               value={draft.name}
               onChange={(name) => setDraft({ ...draft, name })}
@@ -1151,7 +1150,7 @@ function BuiltinRoutineRow({
   const { t } = useTranslation();
   // 旧版电脑上的「每天查待办」仍是内置规则，远程查看时没有对应说明，只显示名称。
   const copy = BUILTIN_COPY[routine.builtin ?? 'follow-up'];
-  const name = copy ? t(`${copy}.name`) : t('routines.todoCheck.name');
+  const name = routine.nameCustomized ? routine.name : copy ? t(`${copy}.name`) : t('routines.todoCheck.name');
   return (
     <div className="flex w-full items-start gap-3 border-b border-[var(--border-default)] py-4 last:border-b-0">
       <div className="min-w-0 flex-1">

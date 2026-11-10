@@ -20,6 +20,7 @@ import {
 } from '@/session/conversationSearch';
 import type { ConversationSearchRequest, ConversationSearchResponse } from '@cindy/maker-shared/conversation-search';
 import type { RemoteSession } from '@/session/types';
+import { FOLLOW_UP_ROUTINE_NAME } from '@cindy/maker-shared/session-title';
 
 function session(partial: Partial<RemoteSession> & Pick<RemoteSession, 'id' | 'title'>): RemoteSession {
   return {
@@ -405,6 +406,27 @@ describe('searchCachedDeviceSessions', () => {
       ['title-hit', 'title'],
       ['preview-hit', 'content'],
     ]);
+  });
+
+  // #9580 边界：缓存降级搜索原来只测普通可见标题/预览，没有内置默认名及同名改名列。
+  // unit：searchCachedDeviceSessions；最小失败输入为英文标签下查询「跟进」，摘要不能固化译文。
+  it.each(['跟进', 'FOLLOW'])('finds cached follow-up titles by %s while preserving each row’s visible title semantics', (query) => {
+    const followUp = session({
+      id: 'follow',
+      title: FOLLOW_UP_ROUTINE_NAME,
+      source: 'bot',
+      companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+    });
+    const page = searchCachedDeviceSessions(studio, {
+      query,
+      builtinFollowUpLabel: 'Follow assigned sessions (built-in)',
+    }, [followUp, { ...followUp, id: 'custom', titleCustomized: true }]);
+
+    expect(page.results.map(item => [item.session.id, item.matchKind, item.titleMatchIndices])).toEqual([
+      ['follow', 'title', []],
+      ...(query === '跟进' ? [['custom', 'title', []]] : []),
+    ]);
+    expect(page.results.every(item => item.session.title === FOLLOW_UP_ROUTINE_NAME)).toBe(true);
   });
 });
 

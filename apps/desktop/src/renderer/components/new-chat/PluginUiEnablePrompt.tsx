@@ -53,7 +53,7 @@ function LocalPluginUiEnablePrompt() {
                     if (result.granted) {
                       setEnabled(true);
                     }
-                    uiPromptsProjection.invalidate();
+                    uiPromptsProjection.update((value) => value.filter((entry) => entry.id !== item.id));
                   } catch {
                     setError(true);
                   } finally {
@@ -70,7 +70,7 @@ function LocalPluginUiEnablePrompt() {
                 onClick={async () => {
                   try {
                     await window.electronAPI.ghosts.deferUiPrompt(item.id, item.version);
-                    uiPromptsProjection.invalidate();
+                    uiPromptsProjection.update((value) => value.filter((entry) => entry.id !== item.id));
                   } catch {
                     setError(true);
                   }

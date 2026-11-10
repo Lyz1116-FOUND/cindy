@@ -2941,7 +2941,9 @@ function ExpandedView({
       // 取旧值用于失败回滚，乐观先 patch（不刷整列表，列表顺序保持稳定）
       // 保持读 sessions(而非 sessionsById):后者含 remoteProjectSessions,换源会连带
       // 改变远程会话的回滚行为,不在本次修复范围内。
-      const oldTitle = sessionsRef.current.find((s) => s.id === sessionId)?.title;
+      const oldSession = sessionsRef.current.find((s) => s.id === sessionId);
+      const oldTitle = oldSession?.title;
+      const oldTitleCustomized = oldSession?.titleCustomized;
       patchLocal(sessionId, { title: newTitle, titleCustomized: true });
       try {
         // 远程会话:patch-meta 经隧道写被控端 → 广播 sessions:patched → applyPatch 更新远程分片(纯镜像)。
@@ -2949,7 +2951,7 @@ function ExpandedView({
       } catch (err) {
         log.error('[session rename]', err);
         toast.error(t('ccAgent.sidebar.renameFailed'));
-        if (oldTitle !== undefined) patchLocal(sessionId, { title: oldTitle });
+        if (oldTitle !== undefined) patchLocal(sessionId, { title: oldTitle, titleCustomized: oldTitleCustomized });
       }
     },
     [patchLocal, t],

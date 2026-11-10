@@ -1,5 +1,21 @@
-import { describe, it, expect, vi } from 'vitest';
+// @vitest-environment jsdom
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { createElement } from 'react';
 import { posix, win32 } from 'node:path';
+
+// 组头只验证标题；远程伙伴名册不是此投影的输入，避免引入登录态。
+vi.mock('@/features/bots/useRemoteBots', () => ({ useRemoteBots: () => [] }));
+vi.mock('react-i18next', async (importOriginal) => ({
+  ...await importOriginal<typeof import('react-i18next')>(),
+  useTranslation: () => ({
+    t: (key: string) => key === 'routines.builtinFollowUp.name' ? 'Follow assigned sessions (built-in)' : key,
+    i18n: { language: 'en' },
+  }),
+}));
+
+afterEach(cleanup);
 
 import { DEFAULT_DRAFT_SESSION_TITLE } from '@cindy/maker-shared/session-title';
 import { FOLLOW_UP_ROUTINE_NAME } from '../../../../../shared/botAutonomy';
@@ -7,6 +23,8 @@ import { SUPPORTED_LOCALES } from '../../../../../shared/locale';
 import { getCrossLocaleString } from '@/i18n/crossLocale';
 
 import type { Session } from '@/lib/ccAgent.types';
+import { groupAutomationSidebarEntries } from '../automationSidebarGrouping';
+import { AutomationSessionGroupItem } from '../../sidebar/AutomationSessionGroupItem';
 
 import {
   canHighlightSessionDisplayTitle,
@@ -214,6 +232,39 @@ describe('built-in follow-up titles', () => {
     expect(translate).toHaveBeenCalledWith(key);
     expect(s.title).toBe(FOLLOW_UP_ROUTINE_NAME);
     expect(canHighlightSessionDisplayTitle(s, translate)).toBe(false);
+  });
+
+  // #9580 边界：上面的逐条投影不经过分组，组头曾丢掉代表任务的 titleCustomized。
+  // unit（真实组头）：最小失败输入为同规则两条运行，首条同名但 titleCustomized=true。
+  it.each([
+    { title: FOLLOW_UP_ROUTINE_NAME, titleCustomized: true, expected: FOLLOW_UP_ROUTINE_NAME },
+    { title: 'My follow-up', titleCustomized: true, expected: 'My follow-up' },
+    { title: FOLLOW_UP_ROUTINE_NAME, titleCustomized: undefined, expected: 'Follow assigned sessions (built-in)' },
+  ])('renders the grouped follow-up title without losing customization: $title ($titleCustomized)', ({ title, titleCustomized, expected }) => {
+    const sessions = [
+      { ...followUp(), id: 'representative', title, titleCustomized },
+      { ...followUp(), id: 'older' },
+    ];
+    const [entry] = groupAutomationSidebarEntries(sessions, { notifications: new Set() });
+    if (entry.kind !== 'automation-group') throw new Error('expected automation group');
+
+    render(createElement(MemoryRouter, null, createElement(AutomationSessionGroupItem, {
+      group: entry.group,
+      collapsed: true,
+      runningSessionIds: new Set<string>(),
+      attachedSessionIds: new Set<string>(),
+      notifications: new Set<string>(),
+      onSessionClick: vi.fn(),
+      onAction: vi.fn(),
+      onRename: vi.fn(),
+      onTogglePin: vi.fn(),
+      onScheduleAction: vi.fn(),
+    })));
+
+    expect(screen.getByRole('button', { name: expected })).toBeTruthy();
+    expect(screen.queryByRole('button', {
+      name: expected === FOLLOW_UP_ROUTINE_NAME ? 'Follow assigned sessions (built-in)' : FOLLOW_UP_ROUTINE_NAME,
+    })).toBeNull();
   });
 
   it.each(SUPPORTED_LOCALES)('restores an unchanged %s default display name to the stored title', (locale) => {

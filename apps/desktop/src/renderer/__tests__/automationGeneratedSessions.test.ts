@@ -454,8 +454,9 @@ describe('automation-generated sessions', () => {
         workspaceKind: 'dialogue',
         companion: { id: botId, role: 'routine', ...(routineId ? { routineId } : {}) },
       });
+    // #9580：既有普通规则分组只比标题；组头取首条运行时也必须保留改名来源。
     const sessions = [
-      routineRun('brief-2', 'bot-a', 'brief'),
+      { ...routineRun('brief-2', 'bot-a', 'brief'), titleCustomized: true },
       routineRun('brief-1', 'bot-a', 'brief'),
       routineRun('other-bot', 'bot-b', 'brief'),
       routineRun('legacy-1', 'bot-a'),
@@ -475,6 +476,7 @@ describe('automation-generated sessions', () => {
       group: {
         id: 'routine:bot-a:brief',
         title: 'Morning brief',
+        titleCustomized: true,
         teammateRoutine: { botId: 'bot-a', routineId: 'brief' },
       },
     });

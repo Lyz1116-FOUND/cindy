@@ -470,6 +470,7 @@ function DeviceDetailScreenContent() {
       statusFilter: automationScopeKey ? 'all' : statusFilter,
       // 未起名会话的显示文案:共享层不兜中文串,由这里给已解析的 i18n 值。
       unnamedLabel: t('session.menu.unnamedTitle'),
+      builtinFollowUpLabel: t('session.builtinFollowUpTitle'),
       // 项目作用域精简页与完整设备详情页都折叠自动化组(HomeSessionRow 支持组行
       // 展开,与首页交互一致);自动化任务作用域页本身就是"某任务的全部运行",必须平铺不折叠。
       groupAutomations: !automationScopeKey,

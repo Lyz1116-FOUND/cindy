@@ -1,4 +1,5 @@
 import { getSessionListActivityAt } from './sessionActivity.js';
+import { isBuiltinFollowUpDefaultSession } from './sessionTitle.js';
 import {
   compareSessionListStrings,
   groupAutomationListItems,
@@ -577,6 +578,7 @@ function matchesSearchQuery(
     // remoteSessionDisplayTitle 的结果,haystack 直接调同一个函数。放原始哨兵会让
     // 「搜得到的」与「看得到的」错位 —— 两个方向都错(见 sessionList 那条注释)。
     remoteSessionDisplayTitle(session, unnamedLabel, builtinFollowUpLabel),
+    isBuiltinFollowUpDefaultSession(session) ? session.title : null,
     session.workingDir,
     session.model,
     session.agentKind,

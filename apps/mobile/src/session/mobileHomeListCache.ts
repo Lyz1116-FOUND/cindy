@@ -235,6 +235,7 @@ function coerceCachedSession(item: unknown): RemoteSession | null {
   // Keep that identity in the cold-start list too; otherwise an SSH row can borrow a local alias.
   if (typeof item.remoteHostId === 'string') session.remoteHostId = item.remoteHostId;
   if (typeof item.source === 'string') session.source = item.source;
+  if (typeof item.titleCustomized === 'boolean') session.titleCustomized = item.titleCustomized;
   session.companion = parseTaskCompanion(item.companion);
   session.taskTeammate = parseTaskTeammate(item.taskTeammate);
   if (orcaRole) session.orcaRole = orcaRole;

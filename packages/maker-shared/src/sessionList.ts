@@ -810,6 +810,8 @@ export function matchesSearchQuery(
     // 不显示这个词的行(PR #1031 review P1)。副作用:`[Schedule] ` 这个**不显示**的
     // 内部前缀不再可搜,自动化任务名另有 scheduleInfo.scheduleName 那条覆盖。
     remoteSessionDisplayTitle(session, options.unnamedLabel, options.builtinFollowUpLabel),
+    // 内置默认标题跨语言后仍保留存储默认名候选；普通草稿哨兵不重新暴露。
+    isBuiltinFollowUpDefaultSession(session) ? session.title : null,
     session.workingDir,
     session.model,
     session.agentKind,

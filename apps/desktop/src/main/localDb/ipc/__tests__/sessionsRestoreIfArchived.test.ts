@@ -94,6 +94,7 @@ function createDb(): void {
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY NOT NULL,
       title TEXT NOT NULL DEFAULT 'New CCS',
+      title_customized INTEGER NOT NULL DEFAULT 0,
       working_dir TEXT,
       project_dir TEXT,
       model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',

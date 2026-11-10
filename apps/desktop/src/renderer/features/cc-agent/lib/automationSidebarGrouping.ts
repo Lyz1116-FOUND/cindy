@@ -67,6 +67,8 @@ export interface AutomationSessionGroup {
    */
   teammateRoutine?: { botId: string; routineId: string };
   title: string;
+  /** 组头代表任务的用户改名来源；同名标题也不得被默认名投影覆盖。 */
+  titleCustomized?: boolean;
   sessions: Session[];
   attentionSessionIds: string[];
 }
@@ -119,6 +121,7 @@ export function getAutomationSidebarGroupInfo(
   key: string;
   legacyKey?: string;
   title: string;
+  titleCustomized?: boolean;
   scheduleId?: string;
   scheduleStatus?: Schedule['status'];
   scheduleSource?: Schedule['source'];
@@ -136,6 +139,7 @@ export function getAutomationSidebarGroupInfo(
       ),
       // 例行任务 Session 以规则名为标题（「每次新建任务」时各次同名）。
       title: session.title,
+      ...(session.titleCustomized ? { titleCustomized: true } : {}),
       teammateRoutine,
     };
   }
@@ -197,6 +201,7 @@ export function groupAutomationSidebarEntries(
         ...(session.deviceLinkDeviceId ? { deviceLinkDeviceId: session.deviceLinkDeviceId } : {}),
         ...(groupInfo.teammateRoutine ? { teammateRoutine: groupInfo.teammateRoutine } : {}),
         title: groupInfo.title,
+        ...(groupInfo.titleCustomized ? { titleCustomized: true } : {}),
         sessions: [session],
         attentionSessionIds: options.notifications.has(session.id) ? [session.id] : [],
       });

@@ -1,5 +1,6 @@
 import { and, count, desc, eq, gte, inArray, isNull, ne, or } from 'drizzle-orm';
 import { normalizeProjectOrderPath } from '@cindy/maker-shared/project-order-sync';
+import { isBuiltinFollowUpDefaultSession } from '@cindy/maker-shared/session-title';
 
 import type {
   ConversationSearchAgentFilter,
@@ -139,15 +140,19 @@ export async function searchConversations(
       // 文案,拿原始哨兵匹配会两头错位 —— 搜可见文案一条都搜不到,搜 "New Maker" 反而
       // 命中一堆不显示这个词的行,高亮下标也会落在别的字上(PR #1031 review P1)。
       // renderer 渲染时调同一个 conversationSearchTitle,两端逐字一致。
-      let match = fuzzyTitleMatch(conversationSearchTitle(sessionSummaries.get(row.id)!, request.unnamedLabel, request.builtinFollowUpLabel), query);
+      const session = sessionSummaries.get(row.id)!;
+      let match = fuzzyTitleMatch(conversationSearchTitle(session, request.unnamedLabel, request.builtinFollowUpLabel), query);
+      // 内置默认标题跨语言后仍可按存储默认名搜到；原名命中不把下标画到另一种语言的显示名上。
+      if (!match && isBuiltinFollowUpDefaultSession(session)) {
+        const original = fuzzyTitleMatch(row.title, query);
+        if (original) match = { score: original.score, indices: [] };
+      }
       if (!match && row.workspaceKind === 'project' && !row.remoteHostId && row.workingDir
         && aliasesByPath.get(normalizeProjectOrderPath(row.projectDir ?? row.workingDir))?.includes(query.toLowerCase())) {
         // Alias-only hits have no highlight positions in the task's title.
         match = { score: 0, indices: [] };
       }
       if (!match) return null;
-      const session = sessionSummaries.get(row.id);
-      if (!session) return null;
       return { session, score: match.score, indices: match.indices, index };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)

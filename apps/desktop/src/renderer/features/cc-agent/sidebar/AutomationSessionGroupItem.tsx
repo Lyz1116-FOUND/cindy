@@ -230,7 +230,7 @@ export const AutomationSessionGroupItem = withSidebarNavigation<AutomationSessio
     // 伙伴任务的归档归伙伴生命周期管理，主进程拒绝通用归档，所以这里也不提供「全部归档」。
     const teammateRoutine = group.teammateRoutine;
     // 分组键与存储名不随语言变化；可见标题和无障碍名称共用当前语言的投影。
-    const displayGroupTitle = teammateRoutine
+    const displayGroupTitle = teammateRoutine && !group.titleCustomized
       ? getBuiltinFollowUpDisplayTitle(group.title, teammateRoutine.routineId, t)
       : group.title;
     // 远程且已结束、又没有未读时，菜单里没有可执行项，不显示「更多」。

@@ -179,11 +179,11 @@ afterEach(() => {
 // 测试价值
 // - 生产入口与可观察结果：searchConversations；内置跟进默认名可按当前语言搜到，摘要保留原始标题/来源与 routineId。
 // - Bug／规则依据：#9580 手机端远程搜索遗漏。
-// - 现有覆盖缺口：既有搜索测试没有 bot_session_links.role=routine 与 titleCustomized。
-// - 最小失败输入：存储名 跟进任务 + builtin-follow-up 路由，查询 follow；用户同名后不再命中默认译文。
+// - 现有覆盖缺口：既有搜索测试没有 bot_session_links.role=routine 与 titleCustomized，也未覆盖英文下搜存储原名。
+// - 最小失败输入：存储名 跟进任务 + builtin-follow-up 路由，查询 follow 或 跟进；用户同名后不再命中默认译文，但仍可按可见原名命中。
 // - tier：unit；内存 SQLite，无外网。
 describe('conversationSearch built-in follow-up titles', () => {
-  it('matches the localized default title and preserves user-customized same-value titles', async () => {
+  it('matches stored and localized built-in titles while keeping renamed-title highlights visible', async () => {
     const db = createSearchDb();
     const client = makeSearchDbClient(db);
     setCurrentDbClient(client, 'test-user');
@@ -199,6 +199,13 @@ describe('conversationSearch built-in follow-up titles', () => {
       expect(result.results.map(item => item.session.id)).toEqual(['default']);
       expect(result.results[0].session).toMatchObject({ title: '跟进任务', titleCustomized: false, companion: { role: 'routine', routineId: 'builtin-follow-up-bot' } });
       expect(result.results[0].titleMatchIndices).toEqual([0, 1, 2, 3, 4, 5]);
+
+      const storedName = await searchConversations({ query: '跟进', semanticMode: 'keyword', builtinFollowUpLabel: 'Follow assigned sessions (built-in)' }, { remoteVisibleOnly: true });
+      expect(storedName.results.map(item => [item.session.id, item.titleMatchIndices])).toEqual([
+        ['default', []],
+        ['custom', [0, 1]],
+      ]);
+      expect(storedName.results.every(item => item.session.title === '跟进任务')).toBe(true);
     } finally {
       clearCurrentDbClient(client);
       db.close();

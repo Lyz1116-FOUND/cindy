@@ -305,6 +305,7 @@ export function SessionContentHeader({
       const stored = toStoredSessionTitle(session, trimmed);
       if (stored === session.title && isBuiltinFollowUpDefaultSession(session) && isBuiltinFollowUpLocalizedDefaultTitle(trimmed)) return;
       const oldTitle = session.title;
+      const oldTitleCustomized = session.titleCustomized;
       patchLocal(session.id, { title: stored, titleCustomized: true });
       try {
         // 远程会话:patch-meta 经隧道写被控端 → 广播 sessions:patched → applyPatch 更新远程分片
@@ -313,7 +314,7 @@ export function SessionContentHeader({
       } catch (err) {
         log.error('[session rename]', err);
         toast.error(t('ccAgent.sidebar.renameFailed'));
-        patchLocal(session.id, { title: oldTitle });
+        patchLocal(session.id, { title: oldTitle, titleCustomized: oldTitleCustomized });
       }
     },
     [

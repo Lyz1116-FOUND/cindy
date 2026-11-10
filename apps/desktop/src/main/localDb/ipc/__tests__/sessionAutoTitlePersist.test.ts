@@ -77,6 +77,7 @@ function createDb(initialTitle: string): void {
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY NOT NULL,
       title TEXT NOT NULL DEFAULT 'New Maker',
+      title_customized INTEGER NOT NULL DEFAULT 0,
       working_dir TEXT,
       project_dir TEXT,
       model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',

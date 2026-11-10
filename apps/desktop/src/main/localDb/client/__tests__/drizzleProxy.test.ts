@@ -16,6 +16,7 @@ const DRIZZLE_PROXY_SCHEMA = [
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL DEFAULT 'New Maker',
+      title_customized INTEGER NOT NULL DEFAULT 0,
       summary TEXT,
       provider_id TEXT,
       working_dir TEXT,

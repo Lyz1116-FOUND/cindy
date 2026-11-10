@@ -21,6 +21,7 @@ import {
   type ConversationSearchStatusFilter,
 } from '@cindy/maker-shared/conversation-search';
 import { stripTrailingPathSeparators } from '@cindy/maker-shared/path-text';
+import { isBuiltinFollowUpDefaultSession } from '@cindy/maker-shared/session-title';
 import { resolveProjectAliasForSessions, type ProjectAliasDisplayIndex } from '@cindy/maker-shared/project-alias-sync';
 import {
   remoteSessionDisplayTitle,
@@ -268,6 +269,7 @@ function cachedConversationSearchMatch(
   builtinFollowUpLabel?: string,
 ): { matchKind: 'title' | 'content' | 'both' } | null {
   const titleHit = remoteSessionDisplayTitle(session, unnamedLabel, builtinFollowUpLabel).toLowerCase().includes(query)
+    || (isBuiltinFollowUpDefaultSession(session) && session.title.toLowerCase().includes(query))
     || projectAlias?.toLowerCase().includes(query) === true;
   const contentHit = (sessionRowMessagePreview(session) ?? '').toLowerCase().includes(query);
   if (!titleHit && !contentHit) return null;

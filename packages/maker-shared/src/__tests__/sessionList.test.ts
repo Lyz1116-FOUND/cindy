@@ -39,6 +39,30 @@ it('projects built-in follow-up default titles for mobile lists unless the user 
   expect(remoteSessionDisplayTitle({ ...s, titleCustomized: true }, 'Untitled', label)).toBe('跟进任务');
 });
 
+// #9580 边界：既有内置标题用例只测显示，没有覆盖跨语言搜索存储原名。
+// unit：设备列表入口；最小失败输入为默认内置名 + 同名 titleCustomized=true 行，查询「跟进」。
+it.each(['跟进', 'FOLLOW'])('searches built-in follow-up titles by %s without treating customized titles as localized defaults', (searchQuery) => {
+  const followUp = session('follow', {
+    title: '跟进任务',
+    source: 'bot',
+    companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+    workspaceKind: 'dialogue',
+    workingDir: null,
+  });
+  const sections = buildRemoteSessionSections([
+    followUp,
+    { ...followUp, id: 'custom', titleCustomized: true },
+    session('draft', { title: 'New Maker', workspaceKind: 'dialogue', workingDir: null }),
+  ], 0, { searchQuery, unnamedLabel: 'Untitled session', builtinFollowUpLabel: 'Follow assigned sessions (built-in)' });
+
+  const rows = sections.flatMap(section => section.data);
+  expect(rows.map(item => [item.session.id, item.title])).toEqual([
+    ['follow', 'Follow assigned sessions (built-in)'],
+    ...(searchQuery === '跟进' ? [['custom', '跟进任务']] : []),
+  ]);
+  expect(rows.every(item => item.session.title === '跟进任务')).toBe(true);
+});
+
 it('preserves default locale ordering for dates, paths, IDs and multilingual titles', () => {
   const values = ['', '2026-01-01T00:00:00Z', '2026-09-30T10:00:00.000Z',
     '/test/History-1', '/test/History-10', 'a', 'A', 'é', 'e', '任务', 'タスク'];

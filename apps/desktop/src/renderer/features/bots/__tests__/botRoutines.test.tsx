@@ -330,6 +330,45 @@ it('allows an independent follow-up model while keeping its instructions and tri
 
 });
 
+// #9580 边界：既有内置用例只测默认名和模型，没有 nameCustomized 的显示/编辑。
+// unit（真实组件）：最小失败输入为 nameCustomized=true 但 name 仍等于内置默认名；
+// 旧版列表会盖回默认译文，编辑器也会禁用名称，保存后的列表同样不能丢改名。
+it('shows and edits a customized built-in name without unlocking its instructions', async () => {
+  const builtin: Routine = {
+    ...existing,
+    id: 'builtin-follow-up-bot',
+    name: '跟进任务',
+    nameCustomized: true,
+    prompt: 'host template',
+    builtin: 'follow-up',
+  };
+  const api = setup(builtin);
+  api.list.mockResolvedValue([builtin]);
+  render(<BotRoutines botId="bot" />);
+
+  await screen.findByRole('switch', { name: builtin.name });
+  fireEvent.click(screen.getByRole('button', { name: builtin.name }));
+  const nameInput = screen.getByLabelText('routines.name') as HTMLInputElement;
+  expect(nameInput.disabled).toBe(false);
+  expect(nameInput.value).toBe(builtin.name);
+  expect((screen.getByLabelText('routines.instructions') as HTMLTextAreaElement).disabled).toBe(true);
+  fireEvent.change(nameInput, { target: { value: 'My follow-up' } });
+  const saved = { ...builtin, name: 'My follow-up' };
+  api.save.mockResolvedValueOnce(saved);
+  api.list.mockResolvedValue([saved]);
+  fireEvent.click(screen.getByRole('button', { name: 'routines.save' }));
+
+  await waitFor(() => expect(api.save).toHaveBeenCalledWith('bot', expect.objectContaining({
+    name: 'My follow-up', prompt: builtin.prompt, triggers: builtin.triggers,
+  }), builtin.id));
+  const back = await screen.findByRole('button', { name: 'routines.back' });
+  await waitFor(() => expect((back as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(back);
+  await screen.findByRole('switch', { name: 'My follow-up' });
+  expect(screen.queryByRole('switch', { name: 'routines.builtinFollowUp.name' })).toBeNull();
+  expect(api.runNow).not.toHaveBeenCalled();
+});
+
 // Production list switches: previously only built-ins could pause without opening
 // the editor. Unit tier; the existing save test only covered the editor.
 it('pauses from the list, preserves configuration, and keeps the switch on after a failed save', async () => {

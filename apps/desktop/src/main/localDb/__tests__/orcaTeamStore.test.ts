@@ -617,6 +617,7 @@ describe('orcaTeamStore', () => {
       CREATE TABLE sessions (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL DEFAULT 'New Maker',
+        title_customized INTEGER NOT NULL DEFAULT 0,
         working_dir TEXT,
         project_dir TEXT,
         workspace_kind TEXT NOT NULL DEFAULT 'project',

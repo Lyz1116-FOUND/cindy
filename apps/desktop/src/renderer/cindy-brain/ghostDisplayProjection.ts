@@ -10,6 +10,8 @@ export interface GhostDisplayProjection<T> {
   getEmptySnapshot(): T;
   subscribe(listener: () => void): () => void;
   invalidate(): void;
+  /** Apply a successful local mutation without waiting for a fresh Host read. */
+  update(mutate: (value: T) => T): void;
   __resetForTest(): void;
 }
 
@@ -76,7 +78,12 @@ export function createGhostDisplayProjection<T>(read: () => Promise<T>, empty: T
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
-        if (!listeners.size) dirty = true;
+        if (!listeners.size) {
+          dirty = true;
+          unsubscribe?.();
+          unsubscribe = undefined;
+          subscribed = false;
+        }
       };
     },
     invalidate() {
@@ -84,6 +91,11 @@ export function createGhostDisplayProjection<T>(read: () => Promise<T>, empty: T
       loaded = false;
       if (listeners.size) void refresh();
       else dirty = true;
+    },
+    update(mutate) {
+      snapshot = mutate(snapshot);
+      loaded = true;
+      notify();
     },
     __resetForTest() {
       unsubscribe?.();

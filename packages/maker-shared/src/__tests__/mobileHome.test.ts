@@ -562,6 +562,34 @@ describe('mobileHome', () => {
     }).chats.map((item) => item.session.id)).toEqual(['s-named']);
   });
 
+  // #9580 边界：首页有独立 haystack，原有哨兵/预览搜索用例没有内置默认名。
+  // unit：buildMobileHomePresentation；最小失败输入为默认内置名 + 同名改名列，英文下查询「跟进」。
+  it.each(['跟进', 'FOLLOW'])('searches home follow-up cards by %s without treating customized titles as localized defaults', (searchQuery) => {
+    const followUp = session('follow', {
+      title: '跟进任务',
+      source: 'bot',
+      companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+      workspaceKind: 'dialogue',
+      workingDir: null,
+    });
+    const home = buildMobileHomePresentation({
+      sessions: [
+        followUp,
+        { ...followUp, id: 'custom', titleCustomized: true },
+        session('draft', { title: 'New Maker', workspaceKind: 'dialogue', workingDir: null }),
+      ],
+      searchQuery,
+      unnamedLabel: 'Untitled session',
+      builtinFollowUpLabel: 'Follow assigned sessions (built-in)',
+    });
+
+    expect(home.chats.map(item => [item.session.id, item.title])).toEqual([
+      ['follow', 'Follow assigned sessions (built-in)'],
+      ...(searchQuery === '跟进' ? [['custom', '跟进任务']] : []),
+    ]);
+    expect(home.chats.every(item => item.session.title === '跟进任务')).toBe(true);
+  });
+
   it('collapses runs of the same schedule into one automation group row inside the project', () => {
     const scheduleInfo = (latestRunAt: number, running = false) => ({
       scheduleId: 'sched-1',
