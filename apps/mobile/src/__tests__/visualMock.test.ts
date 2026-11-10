@@ -17,6 +17,19 @@ vi.mock('@/session/remoteSessionStore', () => ({ remoteSessionStore: {
 beforeEach(() => { vi.resetModules(); config.MOBILE_VISUAL_MOCK_REALDATA_URL = ''; });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.clearAllMocks(); });
 
+// #9580：旧 mock 丢失 routine 归属和 titleCustomized，导致本地化标题搜索误命中用户同名标题。
+// 最小输入为 user-default 任务 + 英文 builtinFollowUpLabel；经实际 mock transport 验证 list/get/search。unit。
+it('mock search uses localized follow-up titles without replacing user-chosen same-value titles', async () => {
+  const mock = await import('@/debug/visualMock');
+  const link = mock.createVisualMockDeviceLinkContext();
+  const rows = await link.invoke<Array<{ id: string; title: string; titleCustomized?: boolean }>>(mock.VISUAL_MOCK_DEVICE_ID, 'local-db:sessions:list', ['all']);
+  expect(rows.find(row => row.id === 'ui-mock-follow-up-user-default')).toMatchObject({ title: '跟进任务', titleCustomized: true, companion: { role: 'routine', routineId: 'builtin-follow-up-demo-bot' } });
+  expect(await link.invoke(mock.VISUAL_MOCK_DEVICE_ID, 'local-db:sessions:get', ['ui-mock-follow-up-user-default'])).toMatchObject({ title: '跟进任务', titleCustomized: true });
+  const search = await link.invoke<{ results: Array<{ session: { id: string } }> }>(mock.VISUAL_MOCK_DEVICE_ID, 'local-db:conversations:search', [{ query: 'follow', builtinFollowUpLabel: 'Follow assigned sessions (built-in)' }]);
+  expect(search.results.map(row => row.session.id)).toContain('ui-mock-follow-up-default');
+  expect(search.results.map(row => row.session.id)).not.toContain('ui-mock-follow-up-user-default');
+});
+
 it('serves showcase files without replacing legacy Markdown and media regression fixtures', async () => {
   const mock = await import('@/debug/visualMock');
   const link = mock.createVisualMockDeviceLinkContext();

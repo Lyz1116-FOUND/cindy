@@ -23,6 +23,11 @@ Desktop 与 Mobile 共用一套模拟数据：展示项目、不同状态的回�
   已归档等任务；`登录页窄窗口错位排查` 一条覆盖标题、表格、代码块、列表、引用、思考与工具
   调用。
   两条 `插件模型：…` 任务覆盖新任务选了插件模型后的说明行（选了模型、插件没回应）。
+  `ui-mock-follow-up-default` / `follow-up-custom` / `follow-up-user-default` 覆盖 #9580 的内置跟进
+  默认名、自定义名和用户同名标题。归属与 `titleCustomized` 复用现有会话投影字段，Mobile 在
+  内存 mock 中提供；Desktop seed 不新增 bot 关联或数据库列，因此不替代真实主机的归属验收。
+  Mobile mock 搜索只匹配标题，用于核对本地化投影；不模拟正文/向量搜索。内置跟进任务仍由
+  Host 托管，Mobile 不开放重命名；mock 不提供绕过该边界的改名写入。
 - `buildUiMockRows()`：按 Desktop 数据库行的格式生成任务与消息。Mobile 平时从电脑收到的
   也是这些行，所以两端看到的是同一份内容。
 

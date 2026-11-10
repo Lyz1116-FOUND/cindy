@@ -41,6 +41,17 @@ describe("shared full-client showcase data", () => {
     }
   });
 
+  // #9580 合成验收：生产 buildUiMockRows 保留内置跟进身份和用户同名标记，供手机真实列表/详情消费。
+  // 既有 showcase 测试没有 routine 元数据；最小输入为 default/custom/user-default 三条任务。unit。
+  it("keeps built-in follow-up attribution and user title provenance in mock rows", () => {
+    const rows = buildUiMockRows({ now: 1_800_000_000_000, projectRoot: "/demo/Projects" });
+    expect(rows.sessions.find(row => row.id === "ui-mock-follow-up-default")).toMatchObject({
+      title: "跟进任务", source: "bot", companion: { role: "routine", routineId: "builtin-follow-up-demo-bot" },
+    });
+    expect(rows.sessions.find(row => row.id === "ui-mock-follow-up-custom")?.title).toBe("My task tracker");
+    expect(rows.sessions.find(row => row.id === "ui-mock-follow-up-user-default")).toMatchObject({ title: "跟进任务", titleCustomized: true });
+  });
+
   it.each(["zh", "en"])(
     "uses the CSV numbers in the %s report and renders safe local controls",
     (locale) => {

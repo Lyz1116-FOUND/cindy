@@ -7,6 +7,7 @@ import { groupMentionVisualFixture } from './groupMentionVisualFixture';
 import { sessionImportVisualFixture } from './sessionImportVisualFixture';
 import { SHARED_REMOTE_CONTROL_FIXTURE } from '@cindy/maker-shared/fixtures';
 import { buildUiMockRows, UI_MOCK_PI_CONTEXT_USAGE, UI_MOCK_SHOWCASE_PROJECTS, type UiMockSessionRow } from '@cindy/maker-shared/ui-mock';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
 import { projectHistoryView } from '@cindy/maker-shared/message-window';
 import { TASK_TAG_COLORS, type TaskTagRequest, type TaskTagResult } from '@cindy/maker-shared';
 import { BOT_GROUP_CHAT_PRIMITIVE, BOT_GROUP_REMOTE_COLLECTION_ID, BOT_GROUP_REMOTE_RESOURCE_KIND } from '@cindy/maker-shared/botGroupChat';
@@ -406,6 +407,25 @@ async function visualMockInvoke<T = unknown>(
       return (args[0] as string[]).map(visualMockSession) as T;
     case 'local-db:sessions:get':
       return visualMockSession(String(args[0] ?? VISUAL_MOCK_SESSION_ID)) as T;
+    case 'local-db:conversations:search': {
+      const request = (args[0] ?? {}) as { query?: string; unnamedLabel?: string; builtinFollowUpLabel?: string };
+      const query = (request.query ?? '').trim().toLowerCase();
+      const results = visualMockSessions('all').flatMap((session, index) => {
+        const title = remoteSessionDisplayTitle(session, request.unnamedLabel, request.builtinFollowUpLabel);
+        const at = title.toLowerCase().indexOf(query);
+        if (!query || at < 0) return [];
+        return [{
+          session: { ...session, ...(session.companion ? { companion: { ...session.companion, name: 'Demo Bot', readOnly: false } } : {}) },
+          matchKind: 'title',
+          titleMatchIndices: Array.from({ length: query.length }, (_, i) => at + i),
+          titleScore: 1,
+          contentHit: null,
+          contentHits: [],
+          rankScore: 1000 - index,
+        }];
+      });
+      return { query, results, vectorUsed: false, vectorSkipReason: null, poolCapped: false } as T;
+    }
     case 'local-db:messages:work-details': {
       const rows = visualMockMessages(String(args[0]));
       const ref = args[1] as { firstMessageId: string; lastMessageId: string };
@@ -663,6 +683,8 @@ function catalogSession(row: UiMockSessionRow): RemoteSession {
     status: row.status,
     agentKind: row.agentKind,
     source: row.source,
+    ...(row.companion ? { companion: row.companion } : {}),
+    ...(row.titleCustomized !== undefined ? { titleCustomized: row.titleCustomized } : {}),
     // Overlay existing catalog tasks with exact ownership, just as the mock host's
     // runtime overlays running/queued state. No extra task titles or private data.
     ...(row.id === 'visual-automation-running' ? { source: 'bot', companion: { id: 'cindy-default', role: 'routine' } } : {}),

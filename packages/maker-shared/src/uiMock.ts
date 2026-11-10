@@ -1,4 +1,5 @@
 import { UI_MOCK_SHOWCASE_PROJECTS, UI_MOCK_SHOWCASE_TASKS } from './uiMockShowcase';
+import { FOLLOW_UP_ROUTINE_NAME } from './sessionTitle';
 export { UI_MOCK_SHOWCASE_PROJECTS };
 
 /**
@@ -71,7 +72,10 @@ export interface UiMockTask {
   model: string;
   effort: 'low' | 'medium' | 'high' | 'xhigh';
   status: 'active' | 'archived';
-  source: 'desktop' | 'scheduler';
+  source: 'desktop' | 'scheduler' | 'bot';
+  /** Existing session attribution fields; Mobile mock uses them as a host projection, not new DB columns. */
+  companion?: { id: string; role: 'routine'; routineId: string };
+  titleCustomized?: boolean;
   pinned?: boolean;
   fastMode?: boolean;
   /** Last activity, relative to the time the data is built. */
@@ -129,6 +133,20 @@ const RICH_ANSWER = [
  */
 export const UI_MOCK_TASKS: readonly UiMockTask[] = [
   ...UI_MOCK_SHOWCASE_TASKS,
+  // #9580: three synthetic host projections cover localization and user-chosen same-value titles.
+  ...[
+    { id: `${UI_MOCK_ID_PREFIX}follow-up-default`, title: FOLLOW_UP_ROUTINE_NAME },
+    { id: `${UI_MOCK_ID_PREFIX}follow-up-custom`, title: 'My task tracker' },
+    { id: `${UI_MOCK_ID_PREFIX}follow-up-user-default`, title: FOLLOW_UP_ROUTINE_NAME, titleCustomized: true },
+  ].map((task, index): UiMockTask => ({
+    ...task, project: null, agentKind: 'cc', model: 'claude-sonnet-5', effort: 'medium',
+    status: 'active', source: 'bot', minutesAgo: index,
+    companion: { id: 'demo-bot', role: 'routine', routineId: 'builtin-follow-up-demo-bot' },
+    messages: [
+      { role: 'user', text: '检查已接手任务的状态，仅汇报变化。' },
+      { role: 'assistant', text: '这是内置跟进标题的合成验收场景，不会启动模型或自动调度。' },
+    ],
+  })),
   {
     id: 'ui-mock-inline-math',
     title: '行内公式语义验收',
@@ -426,6 +444,8 @@ export interface UiMockSessionRow {
   fastMode: boolean;
   status: UiMockTask['status'];
   source: UiMockTask['source'];
+  companion?: UiMockTask['companion'];
+  titleCustomized?: boolean;
   /** Unix ms. */
   pinnedAt: number | null;
   userSendAt: number;
@@ -484,6 +504,8 @@ export function buildUiMockRows({ now, projectRoot }: { now: number; projectRoot
       fastMode: task.fastMode ?? false,
       status: task.status,
       source: task.source,
+      ...(task.companion ? { companion: task.companion } : {}),
+      ...(task.titleCustomized !== undefined ? { titleCustomized: task.titleCustomized } : {}),
       pinnedAt: task.pinned ? updatedAt : null,
       userSendAt: rows[0]?.createdAt ?? updatedAt,
       createdAt: (rows[0]?.createdAt ?? updatedAt) - MINUTE_MS,
