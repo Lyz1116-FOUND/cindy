@@ -9,6 +9,22 @@ function session(id: string): RemoteSession {
 }
 beforeEach(() => remoteSessionStore.clear());
 
+// 测试价值
+// - 生产入口与可观察结果：remoteSessionStore 列表缓存与增量 patch；内置跟进身份和 titleCustomized 不被丢弃。
+// - Bug／规则依据：#9580 手机端标题投影/同名保留。
+// - 现有覆盖缺口：既有 Home 测试只覆盖用量/归档，没有 routineId 与 titleCustomized。
+// - 最小失败输入：host 下发 bot/routine/builtin-follow-up，随后 patch 同名标题并标记用户改名。
+// - tier：unit；内存 store。
+it('preserves built-in follow-up identity and user title provenance through Home cache and patches', () => {
+  remoteSessionStore.setDeviceSessions('host', 'Host', [{
+    ...session('follow'), title: '跟进任务', source: 'bot',
+    companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+  }]);
+  expect(remoteSessionStore.getSessions()[0].companion).toMatchObject({ routineId: 'builtin-follow-up-bot' });
+  remoteSessionStore.applySessionPatch('host', 'follow', { title: '跟进任务', titleCustomized: true });
+  expect(remoteSessionStore.getHomeSessions()[0]).toMatchObject({ title: '跟进任务', titleCustomized: true, companion: { routineId: 'builtin-follow-up-bot' } });
+});
+
 it('keeps Home stable through 100 usage pushes while details receive every update', () => {
   remoteSessionStore.setDeviceSessions('host', 'Host', Array.from({ length: 1000 }, (_, i) => session(`s${i}`)));
   const home = remoteSessionStore.getHomeSessions();

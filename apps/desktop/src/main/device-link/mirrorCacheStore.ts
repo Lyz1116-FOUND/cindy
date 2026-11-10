@@ -235,6 +235,7 @@ const SESSION_FIELD_WHITELIST = [
   'id',
   'userId',
   'title',
+  'titleCustomized',
   'workingDir',
   'projectDir',
   'workspaceKind',

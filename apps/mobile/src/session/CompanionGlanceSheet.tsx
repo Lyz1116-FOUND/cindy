@@ -15,6 +15,7 @@ import {
 import { prNumberLabel, prStatusKey, sessionPrUrl } from '@cindy/maker-shared';
 import { isAccessRevokedRemoteError } from '@cindy/maker-shared/device-link-contract';
 import { getSessionListActivityAt } from '@cindy/maker-shared/session-activity';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
 import type { RemoteResource } from '@cindy/device-link';
 import { useAuth } from '@/auth/AuthContext';
 import { Text } from '@/components/AppText';
@@ -426,7 +427,7 @@ function RecentTask({ task, onOpen }: { task: RemoteSession; onOpen(): void }) {
     return activity?.phase === 'completed' && activity.attention === true;
   });
   return <Row icon={<MessageCircle size={ICON_GLYPH} color={colors.textSecondary} strokeWidth={iconStroke.regular} />}
-    title={task.title} inlineMeta onPress={onOpen} testID="companion.glance.task"
+    title={remoteSessionDisplayTitle(task, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle'))} inlineMeta onPress={onOpen} testID="companion.glance.task"
     trailing={unread ? <View accessibilityLabel={t('devices.glance.unread')} style={styles.unreadDot} /> : undefined} />;
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import { ChevronRight, Link, MessageSquare, Plus, Search, X } from 'lucide-react-native';
 import { getSessionListActivityAt } from '@cindy/maker-shared/session-activity';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
 import { useIsFocused, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import { goBackGuarded } from '@/utils/backGuard';
@@ -100,7 +101,7 @@ export default function IncomingShareScreen() {
   const rows = useMemo<Row[]>(() => {
     const matches = (title: string) => title.normalize('NFKC').toLocaleLowerCase(i18n.language).includes(needle);
     const companions = roster.items.filter(item => matches(`${resolveRemoteText(item.item.display.title, i18n.language)} ${item.host.deviceName}`));
-    const matchingTasks = tasks.filter(item => matches(`${item.session.title} ${item.deviceName}`))
+    const matchingTasks = tasks.filter(item => matches(`${remoteSessionDisplayTitle(item.session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle'))} ${item.deviceName}`))
       .sort((a, b) => (Date.parse(getSessionListActivityAt(b.session)) || 0) - (Date.parse(getSessionListActivityAt(a.session)) || 0));
     const result: Row[] = [{ key: 'new', kind: 'new' }];
     if (companions.length || !needle) result.push({ key: 'companions', kind: 'heading', label: t('composer.incomingShare.companions') });
@@ -218,7 +219,7 @@ export default function IncomingShareScreen() {
               pathname: '/sessions/[sessionId]', params: { deviceId: item.deviceId, deviceName: item.deviceName, sessionId: item.session.id },
             }))}>
             <View style={styles.rowIcon}><MessageSquare color={colors.textTertiary} size={iconSize.md} strokeWidth={iconStroke.regular} /></View>
-            <View style={styles.rowContent}><Text numberOfLines={1} style={styles.title}>{item.session.title}</Text>
+            <View style={styles.rowContent}><Text numberOfLines={1} style={styles.title}>{remoteSessionDisplayTitle(item.session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle'))}</Text>
               <Text numberOfLines={1} style={styles.metadata}>{item.deviceName}</Text></View>
             <ChevronRight color={colors.textTertiary} size={iconSize.sm} strokeWidth={iconStroke.regular} />
           </Pressable>;

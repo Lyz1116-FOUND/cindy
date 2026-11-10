@@ -25,6 +25,13 @@ describe('conversationSearchTitle', () => {
     expect(conversationSearchTitle(DEFAULT_DRAFT_SESSION_TITLE, null)).toBe(DEFAULT_DRAFT_SESSION_TITLE);
   });
 
+  it('projects built-in follow-up session summaries without mutating the stored title', () => {
+    const session = { title: '跟进任务', source: 'bot' as const, companion: { id: 'bot', name: 'Bot', role: 'routine' as const, readOnly: false, routineId: 'builtin-follow-up-bot' } };
+    expect(conversationSearchTitle(session, 'Untitled', 'Follow assigned sessions (built-in)')).toBe('Follow assigned sessions (built-in)');
+    expect(conversationSearchTitle({ ...session, titleCustomized: true }, 'Untitled', 'Follow assigned sessions (built-in)')).toBe('跟进任务');
+    expect(session.title).toBe('跟进任务');
+  });
+
   it('投影结果与哨兵长度无关:高亮下标按返回串算,两端调同一函数即对齐', () => {
     const label = 'Untitled session';
     const projected = conversationSearchTitle(DEFAULT_DRAFT_SESSION_TITLE, label);

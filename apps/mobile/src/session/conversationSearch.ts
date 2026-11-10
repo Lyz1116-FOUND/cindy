@@ -235,7 +235,7 @@ export function searchCachedDeviceSessions(
     if (!sessionBelongsToDevice(session, origin.deviceId)) return;
     const alias = session.workspaceKind === 'project'
       ? resolveProjectAliasForSessions([session], projectAliases, origin.deviceId ?? undefined) : undefined;
-    const match = cachedConversationSearchMatch(session, query, request.unnamedLabel, alias ?? undefined);
+    const match = cachedConversationSearchMatch(session, query, request.unnamedLabel, alias ?? undefined, request.builtinFollowUpLabel);
     if (!match) return;
     hits.push({
       session: sessionToSearchSummary(session, origin),
@@ -265,8 +265,9 @@ function cachedConversationSearchMatch(
   query: string,
   unnamedLabel?: string,
   projectAlias?: string,
+  builtinFollowUpLabel?: string,
 ): { matchKind: 'title' | 'content' | 'both' } | null {
-  const titleHit = remoteSessionDisplayTitle(session, unnamedLabel).toLowerCase().includes(query)
+  const titleHit = remoteSessionDisplayTitle(session, unnamedLabel, builtinFollowUpLabel).toLowerCase().includes(query)
     || projectAlias?.toLowerCase().includes(query) === true;
   const contentHit = (sessionRowMessagePreview(session) ?? '').toLowerCase().includes(query);
   if (!titleHit && !contentHit) return null;
@@ -336,6 +337,7 @@ export function toSearchListItem(
   now: number,
   unnamedLabel?: string,
   cached?: RemoteSession,
+  builtinFollowUpLabel?: string,
 ): ConversationSearchListItem {
   const deviceId = item.session.deviceLinkDeviceId ?? cached?.deviceLinkDeviceId;
   const stamped = cached
@@ -348,6 +350,8 @@ export function toSearchListItem(
     : {
         id: item.session.id,
         title: item.session.title,
+        titleCustomized: item.session.titleCustomized,
+        companion: item.session.companion,
         workingDir: item.session.workingDir,
         projectDir: item.session.projectDir,
         workspaceKind: item.session.workspaceKind,
@@ -372,6 +376,7 @@ export function toSearchListItem(
     null,
     unnamedLabel,
     mobilePresentationLocalizer,
+    builtinFollowUpLabel,
   );
   const searchFocusClientId = item.contentHit?.messageClientId?.trim();
   return {

@@ -109,6 +109,8 @@ export interface Routine {
    * 旧数据缺省视为与任何显式版本不同，下次 ensure 补写。
    */
   builtinVersion?: number;
+  /** 内置规则名称被用户自定义；宿主模板对齐时保留该名称。旧数据缺省 false。 */
+  nameCustomized?: boolean;
   revision: number;
   createdAt: number;
   updatedAt: number;

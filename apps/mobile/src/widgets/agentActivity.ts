@@ -1,4 +1,5 @@
 import type { RemoteSessionLiveActivity } from '@cindy/maker-shared/session-list';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
 import type { RemoteSession } from '@/session/types';
 
 export interface AgentActivityState {
@@ -19,6 +20,7 @@ export function projectAgentActivity(
   labels: Record<AgentActivityState['status'], string>,
   url: (session: RemoteSession) => string,
   staleDetail: string,
+  builtinFollowUpLabel?: string,
 ): AgentActivityState | null {
   const candidates = sessions.flatMap(session => {
     if (session.status !== 'active' || session.cacheSeeded || session.pendingLocalCreation || !session.deviceLinkDeviceId) return [];
@@ -34,7 +36,7 @@ export function projectAgentActivity(
   if (!selected) return null;
   return {
     status: selected.status,
-    title: [...selected.session.title].slice(0, 100).join(''),
+    title: [...remoteSessionDisplayTitle(selected.session, undefined, builtinFollowUpLabel)].slice(0, 100).join(''),
     // Never copy tool arguments or message previews onto a locked phone.
     detail: labels[selected.status],
     count: candidates.length,

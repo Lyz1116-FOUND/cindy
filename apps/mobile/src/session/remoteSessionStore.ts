@@ -1838,6 +1838,7 @@ function preserveSessionRuntimeFields(
   let next = fresh;
   for (const key of [
     'companion',
+    'titleCustomized',
     'taskTeammate',
     'agentSwitchIntent',
     'runtimeGeneration',

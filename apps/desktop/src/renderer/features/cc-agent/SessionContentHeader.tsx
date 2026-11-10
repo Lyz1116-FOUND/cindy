@@ -51,6 +51,7 @@ import { useSessionLifecycleActions } from './hooks/useSessionLifecycleActions';
 import {
   getSessionDisplayTitle,
   isBuiltinFollowUpDefaultSession,
+  isBuiltinFollowUpLocalizedDefaultTitle,
   isEmptyDraftSession,
   toStoredSessionTitle,
 } from './lib/sessionDisplayTitle';
@@ -291,7 +292,8 @@ export function SessionContentHeader({
       // 会话预填的是本地化兜底文案(「未命名任务」),它不等于库里的英文哨兵 —— 只比
       // session.title 的话,用户双击后原样回车就会把兜底文案写进库、把哨兵冲掉,
       // 自动起名从此永久跳过这个会话(标题永远停在「未命名任务」)。
-      const unchanged = !trimmed || trimmed === session.title || trimmed === displayTitle;
+      const unchanged = !trimmed || trimmed === displayTitle ||
+        (trimmed === session.title && (!isBuiltinFollowUpDefaultSession(session) || displayTitle === session.title));
       if (remoteWritesBlocked) {
         if (!unchanged) showRemoteWriteBlockedToast();
         return;
@@ -301,9 +303,9 @@ export function SessionContentHeader({
       // 否则 isAutomationGeneratedSession 认不出它、会话从 automation 分组消失
       // (PR #1031 review P1)。
       const stored = toStoredSessionTitle(session, trimmed);
-      if (stored === session.title && isBuiltinFollowUpDefaultSession(session)) return;
+      if (stored === session.title && isBuiltinFollowUpDefaultSession(session) && isBuiltinFollowUpLocalizedDefaultTitle(trimmed)) return;
       const oldTitle = session.title;
-      patchLocal(session.id, { title: stored });
+      patchLocal(session.id, { title: stored, titleCustomized: true });
       try {
         // 远程会话:patch-meta 经隧道写被控端 → 广播 sessions:patched → applyPatch 更新远程分片
         // (纯镜像,无需重拉);本机会话 patchLocal 已乐观反映。

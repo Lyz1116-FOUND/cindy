@@ -37,11 +37,18 @@ const MAKE_MERGE_TITLE_KEYS = [
 
 export type TranslateSessionTitle = (key: string) => string;
 
+/** 内置跟进默认显示名（含编辑期间切语言前的旧语言文案）。 */
+export function isBuiltinFollowUpLocalizedDefaultTitle(editedTitle: string): boolean {
+  return SUPPORTED_LOCALES.some((lng) =>
+    getCrossLocaleString(lng, 'routines.builtinFollowUp.name') === editedTitle);
+}
+
 /** 显示层识别：仍带默认存储名的内置跟进任务。不是 builtin 授权证明，不参与执行权限。 */
 export function isBuiltinFollowUpDefaultSession(
-  session: Pick<Session, 'title' | 'source' | 'companion'>,
+  session: Pick<Session, 'title' | 'source' | 'companion' | 'titleCustomized'>,
 ): boolean {
-  return session.title === FOLLOW_UP_ROUTINE_NAME &&
+  return !session.titleCustomized &&
+    session.title === FOLLOW_UP_ROUTINE_NAME &&
     session.source === 'bot' &&
     session.companion?.role === 'routine' &&
     session.companion.routineId?.startsWith(BUILTIN_FOLLOW_UP_ROUTINE_PREFIX) === true;
@@ -155,12 +162,8 @@ export function getSessionDisplayTitle(
  */
 export function toStoredSessionTitle(session: Session, editedTitle: string): string {
   // 编辑期间切语言时，旧语言的默认显示名仍是一次“未改名”。只还原默认标题，
-  // 不把用户从自定义名称改成其它文字的结果吞掉；同值默认名沿用上述 provenance 取舍。
-  if (
-    isBuiltinFollowUpDefaultSession(session) &&
-    SUPPORTED_LOCALES.some((lng) =>
-      getCrossLocaleString(lng, 'routines.builtinFollowUp.name') === editedTitle)
-  ) {
+  // 不把用户从自定义名称改成其它文字的结果吞掉。
+  if (isBuiltinFollowUpDefaultSession(session) && isBuiltinFollowUpLocalizedDefaultTitle(editedTitle)) {
     return session.title;
   }
   if (isCindyMakeFamilySource(session.source)) {

@@ -6,7 +6,7 @@
  * 全部为纯函数,不碰 IO;交互副作用(clipboard / Alert / 远端写)由组件层承担。
  */
 import { isSharedTaskPeer } from '@cindy/device-link';
-import { isDefaultDraftSessionTitle } from '@cindy/maker-shared/session-title';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
 
 import { i18n } from '@/i18n';
 import { sessionCollaborationLabel } from '@/session/collaboration';
@@ -65,9 +65,9 @@ export function buildSessionMenuHeader(session: RemoteSession): SessionMenuHeade
     // 哨兵(尚未起名)直接给本地化兜底,**不回落 workspaceName** —— 回落会把目录名当标题,
     // 与 desktop 的「未命名任务」不一致(PR #1031 review P1)。文案走 i18n:本模块四语言
     // 都在用 i18n.t,不能塞硬编码中文(mobile 支持 en / ja / ko)。
-    title: isDefaultDraftSessionTitle(session.title)
-      ? i18n.t('session.menu.unnamedTitle')
-      : session.title || workspaceName(session) || i18n.t('session.menu.titleFallback'),
+    title: session.title
+      ? remoteSessionDisplayTitle(session, i18n.t('session.menu.unnamedTitle'), i18n.t('session.builtinFollowUpTitle'))
+      : workspaceName(session) || i18n.t('session.menu.titleFallback'),
     chips,
     metaLine: buildSessionMenuMetaLine(session),
     usageSummary: buildSessionMenuUsageSummary(session),

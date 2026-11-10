@@ -191,12 +191,28 @@
       "pendingCount": "보류 중 {{count}}개",
       "readOnly": "읽기 전용",
       "queuePaused": "대기열 일시 중지됨",
-      "status": { "active": "활성", "archived": "보관됨", "deleted": "삭제됨" },
+      "status": {
+        "active": "활성",
+        "archived": "보관됨",
+        "deleted": "삭제됨"
+      },
       "actions": {
-        "settings": { "label": "설정", "a11y": "작업 설정 열기" },
-        "usage": { "label": "사용량", "a11y": "작업 사용량 보기" },
-        "files": { "label": "파일", "a11y": "원격 파일 탐색" },
-        "queue": { "label": "대기열", "a11y": "대기열 패널 열기" },
+        "settings": {
+          "label": "설정",
+          "a11y": "작업 설정 열기"
+        },
+        "usage": {
+          "label": "사용량",
+          "a11y": "작업 사용량 보기"
+        },
+        "files": {
+          "label": "파일",
+          "a11y": "원격 파일 탐색"
+        },
+        "queue": {
+          "label": "대기열",
+          "a11y": "대기열 패널 열기"
+        },
         "search": {
           "label": "검색",
           "openA11y": "메시지 검색",
@@ -829,5 +845,6 @@
     "uploadsPending": "첨부 파일을 업로드하는 중입니다. 완료된 후 메시지를 편집하세요.",
     "rollbackHint": "전송하면 이전 턴에서 변경된 파일 {{count}}개가 되돌려집니다",
     "conversationOnlyHint": "전송해도 프로젝트 파일은 복원되지 않으며, 이전 파일 변경은 그대로 남습니다"
-  }
+  },
+  "builtinFollowUpTitle": "담당 세션 후속 확인 (기본)"
 }

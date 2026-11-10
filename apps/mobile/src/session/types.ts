@@ -40,6 +40,8 @@ export interface RemoteSession {
   id: string;
   userId: string;
   title: string;
+  /** 用户手动改过标题；旧被控端缺省按 false。 */
+  titleCustomized?: boolean;
   workingDir: string | null;
   worktreePath?: string | null;
   workspaceKind: 'project' | 'dialogue';

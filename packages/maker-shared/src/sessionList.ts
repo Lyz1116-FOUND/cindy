@@ -6,7 +6,7 @@ import { getSessionListActivityAt, hasPendingSessionInterruption, type SessionIn
 import type { RemoteSchedule, RemoteScheduleRun } from './scheduleTypes.js';
 import { toMillis, isUnreadScheduleRun, isUnreadFailedScheduleRun, activeScheduleFailures, classifyScheduleFailure, compareFailedScheduleRuns, scheduleRunMissingPlugin, type FailedScheduleRunSnapshot } from './scheduleModel.js';
 import { sessionCollaborationLabel, sessionWorktreeLabel } from './sessionIdentity.js';
-import { isDefaultDraftSessionTitle } from './sessionTitle.js';
+import { isDefaultDraftSessionTitle, isBuiltinFollowUpDefaultSession, getBuiltinFollowUpDisplayTitle } from './sessionTitle.js';
 import { getSessionListCollapseView } from './sessionListCollapse.js';
 import { collapseWorktreeDirForGrouping, sessionProjectDirectory } from './worktreePaths.js';
 import { normalizeProjectOrderPath } from './projectOrderSync.js';
@@ -43,6 +43,8 @@ export interface RemoteSessionListSessionLike extends SessionInterruptionState {
   permissionMode?: string | null;
   pinnedAt?: string | null;
   source?: string | null;
+  titleCustomized?: boolean | null;
+  companion?: { id?: string | null; name?: string | null; role?: string | null; routineId?: string | null } | null;
   status: 'active' | 'archived' | 'deleted' | string;
   title: string;
   updatedAt: string;
@@ -196,6 +198,8 @@ export interface RemoteSessionListOptions {
    * 共享层刻意不兜中文串,见 {@link remoteSessionDisplayTitle}。
    */
   unnamedLabel?: string;
+  /** 内置跟进默认标题的当前语言文案。 */
+  builtinFollowUpLabel?: string;
   /** Optional localizer so relative timestamps follow the app language. */
   localizer?: PresentationLocalizer;
 }
@@ -216,6 +220,7 @@ export function buildRemoteSessionSections(
       pendingInteractionIndex: options.pendingInteractionIndex,
       scheduleIndex: options.scheduleIndex,
       unnamedLabel: options.unnamedLabel,
+      builtinFollowUpLabel: options.builtinFollowUpLabel,
     }))
     .sort(compareSessions)
     .map((session) => toRemoteSessionListItem(
@@ -227,6 +232,7 @@ export function buildRemoteSessionSections(
       options.liveActivityIndex?.get(session.id) ?? null,
       options.unnamedLabel,
       options.localizer,
+      options.builtinFollowUpLabel,
     ));
 
   const pinned = items.filter((item) => !!item.session.pinnedAt);
@@ -470,13 +476,17 @@ function buildProjectSections(
  *
  * 空标题(非哨兵)保持既有兜底链 workingDir → 「未命名任务」不变。
  */
-export function remoteSessionDisplayTitle(session: RemoteSession, unnamedLabel?: string): string {
+export function remoteSessionDisplayTitle(session: RemoteSession, unnamedLabel?: string, builtinFollowUpLabel?: string): string {
   if (isDefaultDraftSessionTitle(session.title)) {
     // 调用方给了**已解析的 i18n 文案**就用它;没给则按「无标题」走既有兜底链
     // (workingDir → '未命名任务'),即本 PR 之前的行为 —— 但无论如何都不把英文哨兵
     // 原样显示出去。刻意不在共享层兜一个中文串:mobile 支持 en / ja / ko,那会让未接
     // i18n 的调用方悄悄显示中文(PR #1031 review P1)。
     return unnamedLabel || session.workingDir || '未命名任务';
+  }
+  if (isBuiltinFollowUpDefaultSession(session)) {
+    const title = getBuiltinFollowUpDisplayTitle(session.title, session.companion?.routineId, builtinFollowUpLabel ? () => builtinFollowUpLabel : undefined);
+    if (title !== session.title) return title;
   }
   return automationDisplayTitle(session) || session.workingDir || '未命名任务';
 }
@@ -491,13 +501,14 @@ export function toRemoteSessionListItem(
   /** 「尚未起名」任务的显示文案,由调用方传已解析的 i18n 值(见 remoteSessionDisplayTitle)。 */
   unnamedLabel?: string,
   localizer?: PresentationLocalizer,
+  builtinFollowUpLabel?: string,
 ): RemoteSessionListItem {
   const lastActivityAt = getSessionListActivityAt(session) ?? session.createdAt;
   const scheduleInfo = scheduleIndex?.get(session.id) ?? fallbackScheduleInfo(session);
   const worktreeLabel = sessionWorktreeLabel(session);
   return {
     session,
-    title: remoteSessionDisplayTitle(session, unnamedLabel),
+    title: remoteSessionDisplayTitle(session, unnamedLabel, builtinFollowUpLabel),
     subtitle: [
       sessionCollaborationLabel(session),
       worktreeLabel,
@@ -787,6 +798,7 @@ export function matchesSearchQuery(
     pendingInteractionIndex?: ReadonlyMap<string, number>;
     scheduleIndex?: ReadonlyMap<string, RemoteSessionScheduleInfo>;
     unnamedLabel?: string;
+    builtinFollowUpLabel?: string;
   } = {},
 ): boolean {
   if (!query) return true;
@@ -797,7 +809,7 @@ export function matchesSearchQuery(
     // —— 搜界面上看得见的兜底文案一条都搜不到,搜内部哨兵 "New Maker" 反而命中一堆
     // 不显示这个词的行(PR #1031 review P1)。副作用:`[Schedule] ` 这个**不显示**的
     // 内部前缀不再可搜,自动化任务名另有 scheduleInfo.scheduleName 那条覆盖。
-    remoteSessionDisplayTitle(session, options.unnamedLabel),
+    remoteSessionDisplayTitle(session, options.unnamedLabel, options.builtinFollowUpLabel),
     session.workingDir,
     session.model,
     session.agentKind,

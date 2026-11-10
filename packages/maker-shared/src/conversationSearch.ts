@@ -33,6 +33,7 @@ export interface ConversationSearchRequest {
   filters?: ConversationSearchFilters;
   includeArchived?: boolean;
   unnamedLabel?: string;
+  builtinFollowUpLabel?: string;
 }
 
 export type ConversationSearchSortBy = 'relevance' | 'activityDesc' | 'activityAsc';
@@ -54,6 +55,7 @@ export type ConversationSearchMatchKind = 'title' | 'content' | 'both';
 export interface ConversationSearchSessionSummary {
   id: string;
   title: string;
+  titleCustomized?: boolean | null;
   workingDir: string | null;
   projectDir?: string | null;
   workspaceKind: ConversationSearchWorkspaceKind;
@@ -66,8 +68,9 @@ export interface ConversationSearchSessionSummary {
   companion?: {
     id: string;
     name: string;
-    role: 'canonical' | 'history';
+    role: 'canonical' | 'history' | 'routine';
     readOnly: boolean;
+    routineId?: string | null;
   };
   userSendAt: string | null;
   updatedAt: string;

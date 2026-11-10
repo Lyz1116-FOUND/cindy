@@ -191,12 +191,28 @@
       "pendingCount": "待处理 {{count}}",
       "readOnly": "只读",
       "queuePaused": "队列暂停",
-      "status": { "active": "活跃", "archived": "已归档", "deleted": "已删除" },
+      "status": {
+        "active": "活跃",
+        "archived": "已归档",
+        "deleted": "已删除"
+      },
       "actions": {
-        "settings": { "label": "设置", "a11y": "打开任务设置" },
-        "usage": { "label": "用量", "a11y": "查看任务用量" },
-        "files": { "label": "文件", "a11y": "浏览远程文件" },
-        "queue": { "label": "队列", "a11y": "打开队列面板" },
+        "settings": {
+          "label": "设置",
+          "a11y": "打开任务设置"
+        },
+        "usage": {
+          "label": "用量",
+          "a11y": "查看任务用量"
+        },
+        "files": {
+          "label": "文件",
+          "a11y": "浏览远程文件"
+        },
+        "queue": {
+          "label": "队列",
+          "a11y": "打开队列面板"
+        },
         "search": {
           "label": "搜索",
           "openA11y": "搜索消息",
@@ -829,5 +845,6 @@
     "uploadsPending": "还有附件正在上传，等上传完成后再编辑消息。",
     "rollbackHint": "发送将撤销上一轮对 {{count}} 个文件的改动",
     "conversationOnlyHint": "发送不会恢复项目文件，上一轮的文件改动会保留"
-  }
+  },
+  "builtinFollowUpTitle": "跟进已接手的任务（内置）"
 }

@@ -139,6 +139,7 @@ export interface MobileHomeOptions {
    * 共享层刻意不兜中文串,见 sessionList 的 remoteSessionDisplayTitle。
    */
   unnamedLabel?: string;
+  builtinFollowUpLabel?: string;
   localizer?: PresentationLocalizer;
 }
 
@@ -155,6 +156,7 @@ export function buildMobileHomePresentation({
   sessions,
   statusFilter = 'active',
   unnamedLabel,
+  builtinFollowUpLabel,
   localizer,
 }: MobileHomeOptions): MobileHomePresentation {
   const visibleSessions = CINDY_MAKE_ENABLED
@@ -183,6 +185,7 @@ export function buildMobileHomePresentation({
       pendingInteractionIndex,
       scheduleIndex,
       unnamedLabel,
+      builtinFollowUpLabel,
       projectAliases,
     ))
     .sort(compareSessionsByStatusThenActivityDesc);
@@ -197,6 +200,7 @@ export function buildMobileHomePresentation({
     liveActivityIndex?.get(session.id) ?? null,
     unnamedLabel,
     localizer,
+    builtinFollowUpLabel,
   ));
   const pinned = items.filter((item) => !!item.session.pinnedAt);
   const rest = items.filter((item) => !item.session.pinnedAt);
@@ -562,6 +566,7 @@ function matchesSearchQuery(
   pendingInteractionIndex: ReadonlyMap<string, number> | undefined,
   scheduleIndex: ReadonlyMap<string, RemoteSessionScheduleInfo> | undefined,
   unnamedLabel: string | undefined,
+  builtinFollowUpLabel: string | undefined,
   projectAliases?: ProjectAliasDisplayIndex,
 ): boolean {
   if (!query) return true;
@@ -571,7 +576,7 @@ function matchesSearchQuery(
     // 与首页行展示同源到函数级(同 sessionList 的 matchesSearchQuery):行上显示的就是
     // remoteSessionDisplayTitle 的结果,haystack 直接调同一个函数。放原始哨兵会让
     // 「搜得到的」与「看得到的」错位 —— 两个方向都错(见 sessionList 那条注释)。
-    remoteSessionDisplayTitle(session, unnamedLabel),
+    remoteSessionDisplayTitle(session, unnamedLabel, builtinFollowUpLabel),
     session.workingDir,
     session.model,
     session.agentKind,

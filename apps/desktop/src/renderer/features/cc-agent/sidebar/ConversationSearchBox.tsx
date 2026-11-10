@@ -196,6 +196,7 @@ export function useConversationSearch({
   // (两侧都过 conversationSearchTitle),所以它必须进请求 **和** effect 依赖:
   // 切语言后要重发一次搜索,否则下标还按旧语言的串算、高亮会错位。
   const unnamedLabel = t('ccAgent.common.unnamedSession');
+  const builtinFollowUpLabel = t('routines.builtinFollowUp.name');
   const query = useSyncExternalStore(subscribeSearchDraft, getSearchDraft);
   const [active, setActive] = useState(false);
   const resume = useCallback(() => setActive(true), []);
@@ -403,6 +404,7 @@ export function useConversationSearch({
       limit: SEARCH_LIMIT,
       sortBy,
       unnamedLabel,
+      builtinFollowUpLabel,
       filters: {
         status: statusFilter,
         agentKind: agentFilter,
@@ -502,6 +504,7 @@ export function useConversationSearch({
     statusFilter,
     trimmed,
     unnamedLabel,
+    builtinFollowUpLabel,
   ]);
 
   /**
@@ -1239,7 +1242,7 @@ function SearchResultRow({
   const [expanded, setExpanded] = useState(false);
   // 与 main 的匹配串同源:未起名会话在结果行里也不能露出英文哨兵,且 titleMatchIndices
   // 就是按这个串算出来的,换成原始 title 会让高亮下标错位。
-  const displayTitle = conversationSearchTitle(item.session.title, t('ccAgent.common.unnamedSession'));
+  const displayTitle = conversationSearchTitle(item.session, t('ccAgent.common.unnamedSession'), t('routines.builtinFollowUp.name'));
   const primaryHit = item.contentHit;
   const allHits = item.contentHits ?? (primaryHit ? [primaryHit] : []);
   const visibleHits = expanded ? allHits : allHits.slice(0, MAX_VISIBLE_HITS_PER_RESULT);

@@ -52,6 +52,37 @@ export function isDefaultDraftSessionTitle(title: string | null | undefined): bo
   return title === DEFAULT_DRAFT_SESSION_TITLE;
 }
 
+/** 内置跟进例行任务的稳定存储名与 ID 前缀；跨端显示投影共用，不参与执行授权。 */
+export const FOLLOW_UP_ROUTINE_NAME = '跟进任务';
+export const BUILTIN_FOLLOW_UP_ROUTINE_PREFIX = 'builtin-follow-up-';
+
+export interface BuiltinFollowUpSessionTitleLike {
+  title: string;
+  source?: string | null;
+  titleCustomized?: boolean | null;
+  companion?: { role?: string | null; routineId?: string | null } | null;
+}
+
+/** 仍带默认存储名、且未被用户手动改名的内置跟进任务。 */
+export function isBuiltinFollowUpDefaultSession(session: BuiltinFollowUpSessionTitleLike): boolean {
+  return !session.titleCustomized &&
+    session.title === FOLLOW_UP_ROUTINE_NAME &&
+    session.source === 'bot' &&
+    session.companion?.role === 'routine' &&
+    session.companion.routineId?.startsWith(BUILTIN_FOLLOW_UP_ROUTINE_PREFIX) === true;
+}
+
+export function getBuiltinFollowUpDisplayTitle(
+  title: string,
+  routineId: string | null | undefined,
+  translate?: (key: string) => string,
+): string {
+  if (title !== FOLLOW_UP_ROUTINE_NAME || !routineId?.startsWith(BUILTIN_FOLLOW_UP_ROUTINE_PREFIX)) return title;
+  const key = 'routines.builtinFollowUp.name';
+  const translated = translate?.(key);
+  return translated && translated !== key ? translated : title;
+}
+
 /**
  * 哨兵 → 兜底文案的**最小投影**:所有「渲染 / 搜索匹配 / 重命名预填」路径共用的
  * 唯一判据出口。

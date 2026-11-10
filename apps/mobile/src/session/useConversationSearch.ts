@@ -79,6 +79,7 @@ export function useConversationSearch({
   const [projectSelection, setProjectSelection] = useRetainedHomeState<ConversationSearchProjectSelection>(retainedState, 'search.projectSelection', 'all');
   const requestSeq = useRef(0);
   const unnamedLabel = t('session.menu.unnamedTitle');
+  const builtinFollowUpLabel = t('session.builtinFollowUpTitle');
   const visibleProjectKeys = useMemo(
     () => (projects ?? []).map((project) => project.key),
     [projects],
@@ -153,7 +154,7 @@ export function useConversationSearch({
         ]),
       );
       setResults(page.results.map((item) => (
-        toSearchListItem(item, now, unnamedLabel, cachedSessionForSearchResult(item, cachedByKey))
+        toSearchListItem(item, now, unnamedLabel, cachedSessionForSearchResult(item, cachedByKey), builtinFollowUpLabel)
       )));
     };
     const timer = setTimeout(() => {
@@ -165,6 +166,7 @@ export function useConversationSearch({
           semanticMode: 'keyword',
           sortBy,
           unnamedLabel,
+          builtinFollowUpLabel,
           filters: {
             agentKind: agentFilter,
             lastActivity: lastActivityFilter,
@@ -205,6 +207,7 @@ export function useConversationSearch({
     sortBy,
     statusFilter,
     unnamedLabel,
+    builtinFollowUpLabel,
     workingDirs,
     projectAliases,
   ]);

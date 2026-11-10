@@ -418,7 +418,7 @@ import {
 import { QuoteCapsule } from '@/session/QuoteCapsule';
 import { formatQuotesForSend, stripChatQuoteMarkerLines } from '@cindy/maker-shared/chat-quotes';
 import { permissionModeOrAsk } from '@cindy/maker-shared/permission-mode';
-import { projectDraftSessionTitle } from '@cindy/maker-shared/session-title';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
 import { confirmFullAccessChange } from '@/session/fullAccessConfirmation';
 import {
   confirmAgentLocationForPick,
@@ -10418,7 +10418,7 @@ function SessionScreenContent({ beforeSessionSwitchRef, newSessionActionRef }: S
                 : currentSession?.source === 'side-chat' ? t('session.sideChat.title')
                 : // 哨兵先过投影再进兜底链:会话头是发出第一句话后停留最久的位置,
                   // 原样显示会把内部哨兵 "New Maker" 摆在标题栏上。
-                  projectDraftSessionTitle(currentSession?.title, t('session.menu.unnamedTitle'))
+                  (currentSession ? remoteSessionDisplayTitle(currentSession, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle')) : '')
                   || currentSession?.workingDir
                   || (connectionError ? t('session.screen.sessionNotSynced') : deviceName || t('session.screen.conversationFallback'))
           }

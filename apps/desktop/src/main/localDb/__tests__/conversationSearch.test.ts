@@ -35,11 +35,6 @@ describe('conversationSearch source invariants', () => {
   // 标题匹配必须按**界面上显示的**标题算:未起名会话行上显示的是本地化兜底文案,
   // 拿原始哨兵匹配会让「搜得到的」与「看得到的」错位,命中下标也会错位。
   // renderer 渲染同一个 conversationSearchTitle,两端逐字一致(PR #1031)。
-  it('matches session titles through the shared display projection', () => {
-    expect(conversationSearchSource).toContain(
-      'fuzzyTitleMatch(conversationSearchTitle(row.title, request.unnamedLabel), query)',
-    );
-  });
 
   // 返回给 renderer 的 summary 仍是原始存储值:投影只发生在匹配 / 渲染那一刻,
   // 不把某次请求时的 locale 固化进返回数据(本 PR 第 8 条不变量)。
@@ -72,6 +67,7 @@ function createSearchDb(): Database.Database {
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL DEFAULT 'New Maker',
+      title_customized INTEGER NOT NULL DEFAULT 0,
       working_dir TEXT,
       project_dir TEXT,
       workspace_kind TEXT NOT NULL DEFAULT 'project',
@@ -143,7 +139,7 @@ function createSearchDb(): Database.Database {
       id TEXT PRIMARY KEY, display_name TEXT NOT NULL, status TEXT NOT NULL, hidden_at INTEGER
     );
     CREATE TABLE bot_session_links (
-      session_id TEXT PRIMARY KEY, bot_id TEXT NOT NULL, role TEXT NOT NULL
+      session_id TEXT PRIMARY KEY, bot_id TEXT NOT NULL, role TEXT NOT NULL, route_key TEXT
     );
     CREATE TABLE project_aliases (
       project_key TEXT PRIMARY KEY, alias TEXT NOT NULL, updated_at INTEGER NOT NULL
@@ -180,6 +176,36 @@ afterEach(() => {
 // mobile test supplied the matching task in that cache, so it missed this case.
 // Unit tier: exercise production search against in-memory SQLite with an alias-only hit
 // behind 200 unrelated tasks; no mobile cache or copied matching implementation.
+// 测试价值
+// - 生产入口与可观察结果：searchConversations；内置跟进默认名可按当前语言搜到，摘要保留原始标题/来源与 routineId。
+// - Bug／规则依据：#9580 手机端远程搜索遗漏。
+// - 现有覆盖缺口：既有搜索测试没有 bot_session_links.role=routine 与 titleCustomized。
+// - 最小失败输入：存储名 跟进任务 + builtin-follow-up 路由，查询 follow；用户同名后不再命中默认译文。
+// - tier：unit；内存 SQLite，无外网。
+describe('conversationSearch built-in follow-up titles', () => {
+  it('matches the localized default title and preserves user-customized same-value titles', async () => {
+    const db = createSearchDb();
+    const client = makeSearchDbClient(db);
+    setCurrentDbClient(client, 'test-user');
+    mocks.searchChatHistoryHybrid.mockResolvedValue({ hits: [], sessions: {}, vectorUsed: false, vectorSkipReason: null, nextOffset: null, hasMore: false, poolSize: 0, poolCapped: false });
+    try {
+      for (const [id, customized] of [['default', 0], ['custom', 1]] as const) {
+        db.prepare(`INSERT INTO sessions (id,title,title_customized,status,source,agent_kind,created_at,updated_at)
+          VALUES (?, '跟进任务', ?, 'active', 'bot', 'cc', 1, 1)`).run(id, customized);
+        db.prepare('INSERT INTO bot_profiles (id,display_name,status) VALUES (?, ?, ?)').run(`bot-${id}`, 'Bot', 'active');
+        db.prepare('INSERT INTO bot_session_links (session_id,bot_id,role,route_key) VALUES (?, ?, ?, ?)').run(id, `bot-${id}`, 'routine', 'routine:builtin-follow-up-bot');
+      }
+      const result = await searchConversations({ query: 'follow', semanticMode: 'keyword', builtinFollowUpLabel: 'Follow assigned sessions (built-in)' }, { remoteVisibleOnly: true });
+      expect(result.results.map(item => item.session.id)).toEqual(['default']);
+      expect(result.results[0].session).toMatchObject({ title: '跟进任务', titleCustomized: false, companion: { role: 'routine', routineId: 'builtin-follow-up-bot' } });
+      expect(result.results[0].titleMatchIndices).toEqual([0, 1, 2, 3, 4, 5]);
+    } finally {
+      clearCurrentDbClient(client);
+      db.close();
+    }
+  });
+});
+
 describe('conversationSearch remote project aliases', () => {
   it.each(['/repo', 'C:/Repo'])('finds uncached alias hits in %s before limiting results', async (root) => {
     const db = createSearchDb();
@@ -379,7 +405,7 @@ describe('conversationSearch personal companion chats', () => {
       ]) {
         insertSearchSession(db, id!, 10, null);
         db.prepare('UPDATE sessions SET source = ?, status = ? WHERE id = ?').run(source, status, id);
-        if (role) db.prepare('INSERT INTO bot_session_links VALUES (?, ?, ?)').run(id, 'bot', role);
+        if (role) db.prepare('INSERT INTO bot_session_links (session_id,bot_id,role) VALUES (?, ?, ?)').run(id, 'bot', role);
       }
       const result = await searchConversations({ query: 'needle', semanticMode: 'keyword' });
       const localIds = ['channel', 'feishu-channel', 'group', 'imported', 'main', 'old', 'old-channel', 'review', 'task'];

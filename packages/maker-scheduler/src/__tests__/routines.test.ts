@@ -832,6 +832,19 @@ describe('routine check configuration', () => {
     } finally { await f.engine.stop(); }
   });
 
+  it('allows a built-in rule to customize only its name and preserves that name across host template realigns', async () => {
+    const f = await fixture();
+    const id = 'builtin-follow-up-bot';
+    try {
+      await f.engine.ensureBuiltin('bot', 'follow-up', input, id);
+      const renamed = await f.engine.put('bot', { ...input, name: 'My follow-up' }, id);
+      expect(renamed).toMatchObject({ name: 'My follow-up', nameCustomized: true, prompt: input.prompt });
+      await expect(f.engine.put('bot', { ...input, name: 'My follow-up', prompt: 'edited' }, id)).rejects.toThrow('BUILTIN_ROUTINE');
+      const realigned = await f.engine.ensureBuiltin('bot', 'follow-up', { ...input, prompt: 'v2' }, id, 1);
+      expect(realigned).toMatchObject({ name: 'My follow-up', nameCustomized: true, prompt: 'v2' });
+    } finally { await f.engine.stop(); }
+  });
+
   it('persists the explicit routine session mode and defaults legacy rules to persistent at runtime', async () => {
     const f = await fixture();
     try {

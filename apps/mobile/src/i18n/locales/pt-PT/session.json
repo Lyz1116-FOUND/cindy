@@ -850,5 +850,6 @@
     "uploadsPending": "Ainda há anexos a ser carregados. Aguarde até terminarem antes de editar a mensagem.",
     "rollbackHint": "O envio irá anular as alterações em {{count}} ficheiro(s) da última interação",
     "conversationOnlyHint": "O envio não irá restaurar os ficheiros do projeto; as alterações anteriores serão mantidas"
-  }
+  },
+  "builtinFollowUpTitle": "Acompanhar sessões atribuídas (integrado)"
 }

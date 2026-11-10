@@ -842,6 +842,17 @@ Renderer → Main 输入附带可选 `projectDir`，旧输入缺字段时回落�
 `list_projects` 另新增 `projects_root`（`path`、`source`：`setting`／`inferred`／`default`、`exists`），只读、仅本机；旧调用方忽略该字段即可（#8259）。
 `send_to_session` 的既有任务投递不要求项目，跨电脑投递合同不变。
 
+## 内置跟进标题与用户改名来源（#9580）
+
+Session 列表、单项读取与搜索摘要新增可选 `titleCustomized`，数据库 migration 0149 新增
+`sessions.title_customized`（默认 false）。用户手动改名会置 true；自动标题写入不改该标记。
+旧宿主/旧缓存缺字段按 false 处理，旧客户端忽略新字段。桌面远程镜像缓存白名单保留该布尔值。
+内置跟进默认标题仍按当前语言只读投影；`titleCustomized=true` 时即使用户选择与存储默认名
+相同的文字也逐字保留。手机端列表、搜索与重命名预填复用 `maker-shared/session-title` 与
+`remoteSessionDisplayTitle`，不读取桌面私有翻译。内置例行规则另新增可选 `nameCustomized`：
+允许仅自定义名称，宿主模板对齐保留该名称；指令、触发条件与执行权限保护不变。
+没有新增 device-link channel、allowlist 或账号边界；不修改历史 migration。
+
 ## 手机读取项目别名（#6916）
 
 同账号 device-link 只读白名单增加 `local-db:project-aliases:list`，返回宿主现有的

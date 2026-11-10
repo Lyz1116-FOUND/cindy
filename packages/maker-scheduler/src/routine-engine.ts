@@ -353,13 +353,14 @@ export class RoutineEngine {
           modelOverride: existing.modelOverride,
           sessionMode: existing.sessionMode,
           delivery: existing.delivery,
+          ...(existing.nameCustomized ? { name: existing.name } : {}),
         } : {}),
       });
       if (id && !existing && !creationId && !options.builtin) throw new Error("Routine not found");
       if ((creationId || options.builtin) && state.routines.some(row => row.id === id && row.botId !== botId)) throw new Error("Routine creation ID already used");
       // Host-owned instructions and triggers stay fixed; callers may pause or choose the execution model.
       if (existing?.builtin && !options.builtin &&
-        JSON.stringify(parseRoutineInput({ ...existing, enabled: input.enabled,
+        JSON.stringify(parseRoutineInput({ ...existing, enabled: input.enabled, name: input.name,
           ...(existing.builtin !== 'nightly-learning' ? { modelOverride: input.modelOverride } : {}),
           sessionMode: input.sessionMode })) !== JSON.stringify(input))
         throw new Error(`${BUILTIN_ROUTINE_ERROR}: built-in instructions and triggers cannot be edited`);
@@ -377,6 +378,8 @@ export class RoutineEngine {
       const routine: Routine = {
         ...input,
         ...(builtin ? { builtin } : {}),
+        ...(existing?.nameCustomized || (existing?.builtin && !options.builtin && input.name !== existing.name)
+          ? { nameCustomized: true } : {}),
         ...(builtin && builtinVersion !== undefined ? { builtinVersion } : {}),
         id: existing?.id ?? creationId ?? id ?? this.deps.id(),
         botId,

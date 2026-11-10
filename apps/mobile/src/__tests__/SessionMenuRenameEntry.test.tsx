@@ -2,6 +2,7 @@
 vi.mock('@/session/TaskTags', () => ({ TaskTagsPanel: () => <div data-testid="session.testTags" /> }));
 vi.mock('@/session/SessionPrLinks', () => ({ SessionPrLinks: () => null }));
 import { act, type ReactNode } from "react";
+import { fireEvent } from '@testing-library/react';
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import {
@@ -49,7 +50,12 @@ vi.mock("react-native", async () => {
 });
 vi.mock("@/components/AppText", async () => {
   const rn = await import("react-native");
-  return { Text: rn.Text, TextInput: rn.TextInput };
+  const { createElement } = await import("react");
+  return {
+    Text: rn.Text,
+    TextInput: ({ value, onChangeText, onSubmitEditing, testID }: { value?: string; onChangeText?: (value: string) => void; onSubmitEditing?: () => void; testID?: string }) =>
+      createElement('input', { value, 'data-testid': testID, onChange: (e: { target: { value: string } }) => onChangeText?.(e.target.value), onKeyDown: (e: { key: string }) => { if (e.key === 'Enter') onSubmitEditing?.(); } }),
+  };
 });
 vi.mock("lucide-react-native", () =>
   Object.fromEntries(
@@ -130,9 +136,9 @@ function baseProps(overrides: Partial<SessionMenuSheetProps> = {}) {
   } as unknown as SessionMenuSheetProps;
 }
 
-async function renderSheet(props: SessionMenuSheetProps) {
+async function renderSheet(props: SessionMenuSheetProps, locale = 'zh-CN') {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-  await i18n.changeLanguage("zh-CN");
+  await i18n.changeLanguage(locale);
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () => root.render(<SessionMenuSheet {...props} />));
@@ -143,6 +149,36 @@ async function renderSheet(props: SessionMenuSheetProps) {
   };
   return { host, root, click };
 }
+
+// 测试价值
+// - 生产入口与可观察结果：SessionMenuSheet 重命名输入与确定按钮；未改默认显示名不写，主动输入存储默认名要写。
+// - Bug／规则依据：#9580 titleCustomized 同名保留。
+// - 现有覆盖缺口：既有用例只覆盖普通标题/关闭，没有内置跟进默认名与存储名不同的分支。
+// - 最小失败输入：en 界面预填 Follow assigned sessions (built-in)，用户输入 跟进任务。
+// - tier：unit；真实组件 + DOM 输入事件。
+it.each([
+  ['Follow assigned sessions (built-in)', false],
+  ['跟进任务', true],
+])('built-in follow-up rename submits only an intentional change (%s)', async (value, shouldSubmit) => {
+  const props = baseProps({
+    session: {
+      ...baseProps().session,
+      id: 'follow', title: '跟进任务', source: 'bot', titleCustomized: false,
+      companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+    },
+  });
+  const { host, root, click } = await renderSheet(props, 'en');
+  try {
+    const input = host.querySelector('[data-testid="session.renameInput"]') as HTMLInputElement;
+    expect(input.value).toBe('Follow assigned sessions (built-in)');
+    await act(async () => { fireEvent.change(input, { target: { value } }); });
+    await click('session.renameButton');
+    if (shouldSubmit) expect(props.onRename).toHaveBeenCalledWith('跟进任务');
+    else expect(props.onRename).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+  }
+});
 
 it("opening at rename goes straight to the editor and cancel closes the sheet", async () => {
   const props = baseProps();

@@ -126,6 +126,8 @@ export const sessions = sqliteTable(
   {
     id: text('id').primaryKey(),
     title: text('title').notNull().default('New Maker'),
+    /** 用户手动改过标题。内置默认标题同名时据此保留用户选择；旧数据缺省 false。 */
+    titleCustomized: integer('title_customized', { mode: 'boolean' }).notNull().default(false),
     workingDir: text('working_dir'),
     /** Explicit project membership; null retains the legacy cwd-based grouping. */
     projectDir: text('project_dir'),

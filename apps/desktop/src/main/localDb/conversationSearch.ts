@@ -20,6 +20,7 @@ import { getDbClient } from './client/current.js';
 import { botProfiles, botSessionLinks, messages, projectAliases, sessions } from './schema.js';
 import { prepareChatHistorySearch } from './chatHistorySearch.js';
 import { normalizeDbAgentKind } from '../../shared/agentKindConversion.js';
+import { parseHistoryCompanion } from './historyCompanion.js';
 import { visibleTextMatchesMessagesFtsQuery } from './chatHistorySearch.pure.js';
 import {
   collectContentHitsUntilUniqueSessions,
@@ -49,7 +50,7 @@ const LAST_ACTIVITY_DAY_COUNTS: Record<
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 type SessionRow = Pick<typeof sessions.$inferSelect,
-  | 'id' | 'title' | 'workingDir' | 'projectDir' | 'workspaceKind' | 'remoteHostId'
+  | 'id' | 'title' | 'titleCustomized' | 'workingDir' | 'projectDir' | 'workspaceKind' | 'remoteHostId'
   | 'agentKind' | 'status' | 'source' | 'orcaRole' | 'parentSessionId'
   | 'userSendAt' | 'updatedAt' | 'createdAt'
 > & {
@@ -57,6 +58,7 @@ type SessionRow = Pick<typeof sessions.$inferSelect,
   companionName: string | null;
   companionStatus: string | null;
   companionRole: typeof botSessionLinks.$inferSelect.role | null;
+  companionRouteKey: string | null;
 };
 
 export interface ConversationSearchHostScope {
@@ -137,7 +139,7 @@ export async function searchConversations(
       // 文案,拿原始哨兵匹配会两头错位 —— 搜可见文案一条都搜不到,搜 "New Maker" 反而
       // 命中一堆不显示这个词的行,高亮下标也会落在别的字上(PR #1031 review P1)。
       // renderer 渲染时调同一个 conversationSearchTitle,两端逐字一致。
-      let match = fuzzyTitleMatch(conversationSearchTitle(row.title, request.unnamedLabel), query);
+      let match = fuzzyTitleMatch(conversationSearchTitle(sessionSummaries.get(row.id)!, request.unnamedLabel, request.builtinFollowUpLabel), query);
       if (!match && row.workspaceKind === 'project' && !row.remoteHostId && row.workingDir
         && aliasesByPath.get(normalizeProjectOrderPath(row.projectDir ?? row.workingDir))?.includes(query.toLowerCase())) {
         // Alias-only hits have no highlight positions in the task's title.
@@ -368,6 +370,7 @@ async function listSearchableSessions(
     .select({
       id: sessions.id,
       title: sessions.title,
+      titleCustomized: sessions.titleCustomized,
       workingDir: sessions.workingDir,
       projectDir: sessions.projectDir,
       workspaceKind: sessions.workspaceKind,
@@ -384,6 +387,7 @@ async function listSearchableSessions(
       companionName: botProfiles.displayName,
       companionStatus: botProfiles.status,
       companionRole: botSessionLinks.role,
+      companionRouteKey: botSessionLinks.routeKey,
     })
     .from(sessions)
     .leftJoin(botSessionLinks, eq(botSessionLinks.sessionId, sessions.id))
@@ -445,9 +449,13 @@ function sessionSummaryFromRow(
   row: SessionRow,
   messageCount: number,
 ): ConversationSearchSessionSummary {
+  const companion = row.companionId ? parseHistoryCompanion(JSON.stringify({
+    id: row.companionId, role: row.companionRole, routeKey: row.companionRouteKey,
+  })) : null;
   return {
     id: row.id,
     title: row.title,
+    titleCustomized: !!row.titleCustomized,
     workingDir: row.workingDir,
     projectDir: row.projectDir,
     workspaceKind: row.workspaceKind,
@@ -456,12 +464,13 @@ function sessionSummaryFromRow(
     source: row.source,
     orcaRole: row.orcaRole,
     parentSessionId: row.parentSessionId,
-    ...(row.companionId && row.companionName != null
-      && (row.companionRole === 'canonical' || row.companionRole === 'history' || row.companionRole === 'channel')
+    ...(row.companionId && row.companionName != null && companion
+      && (row.companionRole === 'canonical' || row.companionRole === 'history' || row.companionRole === 'channel' || row.companionRole === 'routine')
       ? { companion: {
           id: row.companionId,
           name: row.companionName,
           role: row.companionRole,
+          ...(companion.routineId ? { routineId: companion.routineId } : {}),
           readOnly: row.companionRole === 'history' || row.companionRole === 'channel'
             || row.status !== 'active' || row.companionStatus !== 'active',
         } }

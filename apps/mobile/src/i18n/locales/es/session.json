@@ -850,5 +850,6 @@
     "uploadsPending": "Todavía se están subiendo archivos adjuntos. Espera a que terminen antes de editar el mensaje.",
     "rollbackHint": "Al enviar, se desharán los cambios en {{count}} archivo(s) del último turno",
     "conversationOnlyHint": "Al enviar, no se restaurarán los archivos del proyecto; los cambios anteriores se conservarán"
-  }
+  },
+  "builtinFollowUpTitle": "Seguimiento de sesiones asignadas (integrado)"
 }

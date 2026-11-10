@@ -2226,6 +2226,7 @@ function HomeScreenContent({ active = true, width, newSessionInSystemBar = false
       statusFilter,
       // 未起名会话的显示文案:共享层不兜中文串,由这里给已解析的 i18n 值。
       unnamedLabel: t('session.menu.unnamedTitle'),
+      builtinFollowUpLabel: t('session.builtinFollowUpTitle'),
     }),
     [deviceModels, liveActivityIndex, messagePreviewIndex, pendingInteractionIndex, scheduleIndex, searchQuery, selectedDeviceId, homeSessions, statusFilter, t, projectAliases],
   );
@@ -2240,6 +2241,7 @@ function HomeScreenContent({ active = true, width, newSessionInSystemBar = false
       sessions: homeSessions,
       statusFilter: 'all',
       unnamedLabel: t('session.menu.unnamedTitle'),
+      builtinFollowUpLabel: t('session.builtinFollowUpTitle'),
     }),
     [deviceModels, scheduleIndex, selectedDeviceId, homeSessions, t, projectAliases],
   );

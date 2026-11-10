@@ -229,6 +229,13 @@ describe('built-in follow-up titles', () => {
     );
   });
 
+  // 测试价值：titleCustomized 持久化后，用户主动选择与存储默认名相同的标题也逐字保留。
+  it('keeps a user-chosen stored default title literal and does not restore localized defaults', () => {
+    const s = { ...followUp(), titleCustomized: true };
+    expect(getSessionDisplayTitle(s, UNNAMED, () => 'Follow assigned sessions (built-in)')).toBe(FOLLOW_UP_ROUTINE_NAME);
+    expect(toStoredSessionTitle(s, 'Follow assigned sessions (built-in)')).toBe('Follow assigned sessions (built-in)');
+  });
+
   it('accepts the normalized routine ID of a hashed built-in rule without parsing the bot ID', () => {
     const s = followUp();
     s.companion = {

@@ -134,6 +134,7 @@ export function AgentActivityBridge() {
             queryParams: { deviceId: session.deviceLinkDeviceId! },
           }),
         t("devices.companions.stale"),
+        t("session.builtinFollowUpTitle"),
       );
       // An idle online peer cannot attest that an unreachable peer has finished.
       // Prefer a displayable live activity; otherwise retain the last stale one.

@@ -10,6 +10,7 @@ import {
   deviceSessionEmptyState,
   getRemoteSessionPreviewCollapse,
   remoteSessionControlsSummary,
+  remoteSessionDisplayTitle,
   remoteSessionFilterLabel,
   remoteSessionOverviewCopy,
   type RemoteSessionListMessage as RemoteMessage,
@@ -19,6 +20,24 @@ import {
   toRemoteSessionListItem,
   formatRemoteSessionSidebarTime,
 } from '../sessionList.js';
+
+// 测试价值
+// - 生产入口与可观察结果：remoteSessionDisplayTitle/toRemoteSessionListItem；手机端内置跟进默认标题本地化，用户同名标题保留。
+// - Bug／规则依据：#9580 手机端遗漏与 titleCustomized 持久化合同。
+// - 现有覆盖缺口：既有列表测试只覆盖草稿哨兵和项目别名，没有内置跟进元数据。
+// - 最小失败输入：bot/routine + builtin-follow-up ID + 默认存储名；titleCustomized=true 时不再投影。
+// - tier：unit；纯共享函数。
+it('projects built-in follow-up default titles for mobile lists unless the user customized the title', () => {
+  const s = session('follow', {
+    title: '跟进任务',
+    source: 'bot',
+    companion: { id: 'bot', role: 'routine', routineId: 'builtin-follow-up-bot' },
+  });
+  const label = 'Follow assigned sessions (built-in)';
+  expect(remoteSessionDisplayTitle(s, 'Untitled', label)).toBe(label);
+  expect(toRemoteSessionListItem(s, 0, undefined, 0, null, null, 'Untitled', undefined, label).title).toBe(label);
+  expect(remoteSessionDisplayTitle({ ...s, titleCustomized: true }, 'Untitled', label)).toBe('跟进任务');
+});
 
 it('preserves default locale ordering for dates, paths, IDs and multilingual titles', () => {
   const values = ['', '2026-01-01T00:00:00Z', '2026-09-30T10:00:00.000Z',

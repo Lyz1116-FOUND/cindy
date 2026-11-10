@@ -2402,6 +2402,8 @@ export async function updateSessionInDb(
     // 否则 mapper 会把未知字段当成非法写入。
     const rowPatch = { ...p };
     delete rowPatch.contextWindowBudget;
+    // 手动改名即使用户选了与默认存储名相同的文字，也保留用户选择。
+    if (typeof p.title === 'string') rowPatch.titleCustomized = true;
     const setObj = sessionPatchToRow(rowPatch as Parameters<typeof sessionPatchToRow>[0], {
       bumpUpdatedAt: !isSettingsOnly,
     });
@@ -2565,11 +2567,13 @@ export async function updateSessionInDb(
         .limit(1);
       if (currentRow) broadcastStatus = currentRow.status;
     }
+    const titlePatch = titleChanged ? { titleCustomized: updated.titleCustomized } : {};
     const broadcastPatch =
       p.pinnedAt === undefined && p.status === undefined && setObj.projectDir === undefined
-        ? p
+        ? { ...p, ...titlePatch }
         : {
             ...p,
+            ...titlePatch,
             // Include mapper-derived changes so every mounted mirror drops the
             // old explicit membership after a move, just as SQLite does.
             ...(setObj.projectDir !== undefined ? { projectDir: updated.projectDir } : {}),
@@ -2728,8 +2732,11 @@ export async function patchSessionMetaInDb(
   const dbClient = getDbClient();
   const db = dbClient.drizzle;
   const setObj = sessionPatchToRow(patch, { bumpUpdatedAt: false });
-  // 控制端远程改名走这条,与本机改名同口径(同样先记号后写库)。
-  if (patch.title !== undefined) noteUserTitleWritten(sessionId);
+  // 远程控制端同样是一次用户改名；与本地入口写入同一份持久来源事实。
+  if (patch.title !== undefined) {
+    setObj.titleCustomized = true;
+    noteUserTitleWritten(sessionId);
+  }
   let deletedSideChats: SessionsSetTerminalStatusResult['deletedSideChats'] | undefined;
   await cancelValidatedCreation(dbClient, sessionId, patch.status, () => {
     if (!isOwnerScopeCurrent(ownerScope) || options.signal?.aborted) {
@@ -2801,8 +2808,10 @@ export async function patchSessionMetaInDb(
   //   - sessionsStore.onPatched → patchLocal,即时反映到 sidebar(删/归档移出 active 桶、改名/置顶刷新);
   //   - CCAgentSessionView.onPatched → 合并进 serverSession。
   // 经 tap 转发:订阅了该被控端 `sessions` topic 的控制端也即时收到这条 patched(push 驱动镜像)。
-  const broadcastPatch =
-    patch.pinnedAt !== undefined && updated.pinnedAt == null ? { ...patch, summary: null } : patch;
+  const broadcastPatch = {
+    ...(patch.pinnedAt !== undefined && updated.pinnedAt == null ? { ...patch, summary: null } : patch),
+    ...(patch.title !== undefined ? { titleCustomized: updated.titleCustomized } : {}),
+  };
   if (isOwnerScopeCurrent(ownerScope)) {
     broadcastSessionPatched(sessionId, broadcastPatch, ownerScope);
   }

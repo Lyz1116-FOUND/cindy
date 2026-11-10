@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InstalledGhost } from '../../../shared/ghost';
 import { useWorkdirDisabledGhostIds } from '../ghostWorkdirFilter';
 import { createGhostDisplayProjection, useGhostDisplayProjection } from '../ghostDisplayProjection';
+import { setDataOwnerGeneration, __testing as dataOwnerTesting } from '../../contexts/dataOwnerGeneration';
 import {
   __resetInstalledGhostsStoreForTest,
   useInstalledGhosts,
@@ -45,6 +46,7 @@ const onChanged = vi.fn((cb: ChangedCb) => {
 });
 
 beforeEach(() => {
+  dataOwnerTesting.reset();
   __resetInstalledGhostsStoreForTest();
   listSync.mockReset();
   listSync.mockReturnValue({ ghosts: [ghost('cindy-art')] });
@@ -61,6 +63,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  dataOwnerTesting.reset();
   __resetInstalledGhostsStoreForTest();
 });
 
@@ -226,6 +229,31 @@ describe('plugin display projections', () => {
     expect(read).toHaveBeenCalledTimes(2);
     a.unmount();
     b.unmount();
+    projection.__resetForTest();
+  });
+
+  // 测试价值
+  // - 生产入口与可观察结果：createGhostDisplayProjection/useGhostDisplayProjection；切账号后插件显示投影自动读到新账号数据。
+  // - Bug／规则依据：#9580 关联审计发现的 owner 切换 in-flight 停更。
+  // - 现有覆盖缺口：既有共享/通知用例没有覆盖旧请求未返回时切 owner。
+  // - 最小失败输入：owner A 读取挂起 → 切 owner B 并渲染 → A 回包；旧实现不再读 B。
+  // - tier：unit；内存 deferred，无真实等待。
+  it('owner switch during an in-flight read schedules a new-owner refresh without a plugin notification', async () => {
+    setDataOwnerGeneration('owner-a', 0);
+    let resolveOld!: (value: string[]) => void;
+    const read = vi.fn()
+      .mockImplementationOnce(() => new Promise<string[]>(resolve => { resolveOld = resolve; }))
+      .mockImplementation(async () => ['new-owner-plugin']);
+    const projection = createGhostDisplayProjection(read, [] as string[]);
+    const hook = renderHook(() => useGhostDisplayProjection(projection));
+    await act(async () => {});
+    expect(read).toHaveBeenCalledTimes(1);
+    act(() => setDataOwnerGeneration('owner-b', 1));
+    hook.rerender();
+    await act(async () => { resolveOld(['old-owner-plugin']); });
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(hook.result.current).toEqual(['new-owner-plugin']);
+    hook.unmount();
     projection.__resetForTest();
   });
 

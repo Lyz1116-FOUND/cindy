@@ -197,10 +197,22 @@
         "deleted": "已刪除"
       },
       "actions": {
-        "settings": { "label": "設定", "a11y": "開啟任務設定" },
-        "usage": { "label": "用量", "a11y": "查看任務用量" },
-        "files": { "label": "檔案", "a11y": "瀏覽遠端檔案" },
-        "queue": { "label": "佇列", "a11y": "開啟佇列面板" },
+        "settings": {
+          "label": "設定",
+          "a11y": "開啟任務設定"
+        },
+        "usage": {
+          "label": "用量",
+          "a11y": "查看任務用量"
+        },
+        "files": {
+          "label": "檔案",
+          "a11y": "瀏覽遠端檔案"
+        },
+        "queue": {
+          "label": "佇列",
+          "a11y": "開啟佇列面板"
+        },
         "search": {
           "label": "搜尋",
           "openA11y": "搜尋訊息",
@@ -833,5 +845,6 @@
     "uploadsPending": "還有附件正在上傳，等上傳完成後再編輯訊息。",
     "rollbackHint": "傳送將撤銷上一輪對 {{count}} 個檔案的改動",
     "conversationOnlyHint": "傳送不會恢復專案檔案，上一輪的檔案改動會保留"
-  }
+  },
+  "builtinFollowUpTitle": "跟進已接手的任務（內建）"
 }

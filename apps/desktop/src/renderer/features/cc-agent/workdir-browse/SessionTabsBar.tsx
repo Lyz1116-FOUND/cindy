@@ -44,7 +44,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { AgentKind, Session } from '@/lib/ccAgent.types';
 import { makerChatStore } from '@/lib/makerChatStore';
-import { getSessionDisplayTitle, isBuiltinFollowUpDefaultSession, toStoredSessionTitle } from '../lib/sessionDisplayTitle';
+import { getSessionDisplayTitle, isBuiltinFollowUpDefaultSession, isBuiltinFollowUpLocalizedDefaultTitle, toStoredSessionTitle } from '../lib/sessionDisplayTitle';
 
 export interface SessionTabsBarProps {
   /** 当前 URL :sessionId 指向的 session；null 表示无 active（极少出现）。 */
@@ -132,11 +132,12 @@ export function SessionTabsBar({
     // 预填的是本地化兜底文案,它不等于库里的英文哨兵 —— 只比原始 title 的话,
     // 用户双击后原样回车会把兜底文案写进库、冲掉哨兵,自动起名从此跳过这个会话。
     const displayed = target ? getSessionDisplayTitle(target, unnamedLabel, t) : '';
-    if (!trimmed || trimmed === original || trimmed === displayed) return;
+    if (!trimmed || trimmed === displayed ||
+      (trimmed === original && target && (!isBuiltinFollowUpDefaultSession(target) || displayed === original))) return;
     // 预填是显示标题(legacy automation 会话已剥掉 `[Schedule] ` 前缀),落库前还原,
     // 否则会话会从 automation 分组里消失(PR #1031 review P1)。
     const stored = target ? toStoredSessionTitle(target, trimmed) : trimmed;
-    if (target && stored === original && isBuiltinFollowUpDefaultSession(target)) return;
+    if (target && stored === original && isBuiltinFollowUpDefaultSession(target) && isBuiltinFollowUpLocalizedDefaultTitle(trimmed)) return;
     onRename(id, stored);
   }, [renamingId, editValue, sessions, onRename, unnamedLabel, t]);
 

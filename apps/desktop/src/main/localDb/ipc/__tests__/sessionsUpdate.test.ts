@@ -242,6 +242,7 @@ function createDb(): void {
     CREATE TABLE sessions (
       id TEXT PRIMARY KEY NOT NULL,
       title TEXT NOT NULL DEFAULT 'New CCS',
+      title_customized INTEGER NOT NULL DEFAULT 0,
       working_dir TEXT,
       model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
       scheduled_model_baseline TEXT,
@@ -420,6 +421,19 @@ afterEach(async () => {
 });
 
 describe('local-db:sessions:update handler wiring', () => {
+  // 测试价值：真实 update / patch-meta handler 写入并广播标题来源（#9580）。
+  // 既有测试只覆盖本地 update 的其它字段，漏掉手机远程改名；最小输入是用户主动
+  // 保存与内置默认名同文的标题。内存 SQLite，unit；不得只改返回对象不落库。
+  it.each([invokeUpdate, invokePatchMeta])('persists and broadcasts title provenance through handler %#', async update => {
+    h.sqlite!.prepare('UPDATE sessions SET title = ? WHERE id = ?').run('跟进任务', 'codex-local');
+    const result = await update('codex-local', { title: '跟进任务' }) as { titleCustomized?: boolean };
+    expect(result.titleCustomized).toBe(true);
+    expect(h.sqlite!.prepare('SELECT title_customized FROM sessions WHERE id = ?').get('codex-local'))
+      .toEqual({ title_customized: 1 });
+    expect(h.tapWindowBroadcast).toHaveBeenCalledWith('local-db:sessions:patched', {
+      sessionId: 'codex-local', patch: { title: '跟进任务', titleCustomized: true },
+    });
+  });
   // Terminal lifecycle through both real public handlers: an ordinary fork survives,
   // but a hidden side chat must not remain running after its parent becomes unreachable (unit).
   it.each([invokeUpdate, invokePatchMeta])('deletes dependent side chats without deleting ordinary forks (%#)', async update => {

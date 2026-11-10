@@ -336,7 +336,7 @@ export function searchCachedSessionsByTitle(
       return;
     }
     if (activityCutoff !== null && sessionActivityMs(session) < activityCutoff) return;
-    const title = conversationSearchTitle(session.title, request.unnamedLabel);
+    const title = conversationSearchTitle(session, request.unnamedLabel, request.builtinFollowUpLabel);
     const match = fuzzyMatch(title, query);
     if (!match) return;
     titleMatches.push({
@@ -490,6 +490,13 @@ export function sessionToSearchSummary(session: Session): ConversationSearchSess
   return {
     id: session.id,
     title: session.title,
+    titleCustomized: session.titleCustomized,
+    ...(session.companion ? { companion: {
+      id: session.companion.id, name: session.companion.id,
+      role: session.companion.role as 'canonical' | 'history' | 'channel' | 'routine',
+      readOnly: session.companion.role === 'history' || session.companion.role === 'channel',
+      routineId: session.companion.routineId,
+    } } : {}),
     workingDir: session.workingDir,
     projectDir: session.projectDir,
     workspaceKind: session.workspaceKind,

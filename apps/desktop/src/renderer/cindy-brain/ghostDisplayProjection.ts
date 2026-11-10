@@ -52,6 +52,9 @@ export function createGhostDisplayProjection<T>(read: () => Promise<T>, empty: T
       snapshot = empty;
       loaded = false;
       request += 1;
+      // 切 owner 时旧请求可能仍在途；旧回包会被 revision 丢弃。
+      // 必须留下一次新 owner 的读取，否则没有插件通知时投影会停在空快照。
+      dirty = true;
     }
     if (!subscribed) {
       subscribed = true;

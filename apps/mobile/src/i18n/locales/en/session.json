@@ -197,10 +197,22 @@
         "deleted": "Deleted"
       },
       "actions": {
-        "settings": { "label": "Settings", "a11y": "Open session settings" },
-        "usage": { "label": "Usage", "a11y": "View session usage" },
-        "files": { "label": "Files", "a11y": "Browse remote files" },
-        "queue": { "label": "Queue", "a11y": "Open queue panel" },
+        "settings": {
+          "label": "Settings",
+          "a11y": "Open session settings"
+        },
+        "usage": {
+          "label": "Usage",
+          "a11y": "View session usage"
+        },
+        "files": {
+          "label": "Files",
+          "a11y": "Browse remote files"
+        },
+        "queue": {
+          "label": "Queue",
+          "a11y": "Open queue panel"
+        },
         "search": {
           "label": "Search",
           "openA11y": "Search messages",
@@ -833,5 +845,6 @@
     "uploadsPending": "Attachments are still uploading. Wait for them to finish before editing the message.",
     "rollbackHint": "Sending will undo changes to {{count}} file(s) from the last turn",
     "conversationOnlyHint": "Sending will not restore project files; previous file changes will remain"
-  }
+  },
+  "builtinFollowUpTitle": "Follow assigned sessions (built-in)"
 }

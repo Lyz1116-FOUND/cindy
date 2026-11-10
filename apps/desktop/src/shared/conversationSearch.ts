@@ -1,4 +1,4 @@
-import { projectDraftSessionTitle } from '@cindy/maker-shared/session-title';
+import { projectDraftSessionTitle, isBuiltinFollowUpDefaultSession, getBuiltinFollowUpDisplayTitle, type BuiltinFollowUpSessionTitleLike } from '@cindy/maker-shared/session-title';
 
 import type { SessionSource } from './sessionSource';
 
@@ -26,6 +26,8 @@ export interface ConversationSearchRequest {
    * 不传则退回按原始哨兵匹配(旧 renderer 构建)。
    */
   unnamedLabel?: string;
+  /** 当前控制端语言的内置跟进默认名；旧控制端缺省按存储标题匹配。 */
+  builtinFollowUpLabel?: string;
 }
 
 export type ConversationSearchSortBy = 'relevance' | 'activityDesc' | 'activityAsc';
@@ -55,6 +57,8 @@ export type ConversationSearchMatchKind = 'title' | 'content' | 'both';
 export interface ConversationSearchSessionSummary {
   id: string;
   title: string;
+  /** 用户手动改过标题；旧宿主缺省按 false。 */
+  titleCustomized?: boolean | null;
   workingDir: string | null;
   projectDir?: string | null;
   workspaceKind: ConversationSearchWorkspaceKind;
@@ -67,8 +71,9 @@ export interface ConversationSearchSessionSummary {
   companion?: {
     id: string;
     name: string;
-    role: 'canonical' | 'history' | 'channel';
+    role: 'canonical' | 'history' | 'channel' | 'routine';
     readOnly: boolean;
+    routineId?: string | null;
   };
   userSendAt: string | null;
   updatedAt: string;
@@ -113,8 +118,16 @@ export interface ConversationSearchResultItem {
  * 注意投影只发生在「匹配 / 渲染」这一刻:`ConversationSearchSessionSummary.title` 仍是
  * 原始存储值,不把某次请求时的 locale 固化进返回数据。
  */
-export function conversationSearchTitle(title: string, unnamedLabel?: string | null): string {
-  return projectDraftSessionTitle(title, unnamedLabel);
+export function conversationSearchTitle(
+  titleOrSession: string | BuiltinFollowUpSessionTitleLike,
+  unnamedLabel?: string | null,
+  builtinFollowUpLabel?: string | null,
+): string {
+  if (typeof titleOrSession !== 'string' && isBuiltinFollowUpDefaultSession(titleOrSession)) {
+    return getBuiltinFollowUpDisplayTitle(titleOrSession.title, titleOrSession.companion?.routineId,
+      builtinFollowUpLabel ? () => builtinFollowUpLabel : undefined);
+  }
+  return projectDraftSessionTitle(typeof titleOrSession === 'string' ? titleOrSession : titleOrSession.title, unnamedLabel);
 }
 
 export interface ConversationSearchResponse {

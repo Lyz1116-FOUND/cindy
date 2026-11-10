@@ -1,8 +1,8 @@
 /**
  * 手机端「未起名任务标题」投影的出口清单。
  *
- * 不变量:用户能看到的每个任务标题出口都必须过 projectDraftSessionTitle,内部哨兵
- * `New Maker` 一处都不许原样渲染;而重命名输入框预填投影值后,**必须**有一条
+ * 不变量:用户能看到的每个任务标题出口都必须过共享标题投影（草稿哨兵与内置跟进默认名）,
+ * 内部哨兵 `New Maker` 一处都不许原样渲染;而重命名输入框预填投影值后,**必须**有一条
  * 「没改就不落库」的判据同时比原始标题与投影值 —— 否则用户双击后原样确定就会把兜底
  * 文案写进 DB,哨兵被毁、自动起名永久跳过该任务(PR #1031)。
  *
@@ -28,22 +28,22 @@ const menuSheet = read('src/session/SessionMenuSheet.tsx');
 describe('mobile 会话标题投影出口', () => {
   it('会话页标题栏过投影', () => {
     expect(sessionScreen).toContain(
-      "projectDraftSessionTitle(currentSession?.title, t('session.menu.unnamedTitle'))",
+      "remoteSessionDisplayTitle(currentSession, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle'))",
     );
   });
 
   it('首页删除确认里的标题过投影', () => {
     expect(sessionListActions).toContain(
-      "projectDraftSessionTitle(session.title, t('session.menu.unnamedTitle')).trim()",
+      "remoteSessionDisplayTitle(session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle')).trim()",
     );
   });
 
   it('两个重命名入口都用投影值预填', () => {
     expect(sessionListActions).toContain(
-      "setRenameSessionDraft(projectDraftSessionTitle(session.title, t('session.menu.unnamedTitle')))",
+      "setRenameSessionDraft(remoteSessionDisplayTitle(session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle')))",
     );
     expect(menuSheet).toContain(
-      "const renamePrefill = projectDraftSessionTitle(session.title, t('session.menu.unnamedTitle'));",
+      "const renamePrefill = remoteSessionDisplayTitle(session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle'));",
     );
     // 预填一旦是投影值,输入框里就不能再出现原始哨兵。
     expect(menuSheet).not.toContain("setTitleDraft(session.title ?? '')");
@@ -52,8 +52,8 @@ describe('mobile 会话标题投影出口', () => {
   it('两个重命名入口的「没改就不落库」判据都覆盖投影值', () => {
     // 只比原始标题 → 兜底文案被写进 DB,哨兵被毁。
     expect(sessionListActions).toContain(
-      "if (title === projectDraftSessionTitle(target.title, t('session.menu.unnamedTitle'))) return;",
+      "if (title === displayed || (title === (target.title ?? '') && !isBuiltinFollowUpDefaultSession(target))) return;",
     );
-    expect(menuSheet).toContain('if (!next || next === session.title || next === renamePrefill) {');
+    expect(menuSheet).toContain('if (!next || next === renamePrefill ||');
   });
 });

@@ -278,6 +278,7 @@ export function sessionToCamel(row: SessionRowWithCount): Session {
     ...(row.tags ? { tags: row.tags } : {}),
     userId: '', // 本地 db 已按 user 隔离，无需冗余存储
     title: row.title,
+    titleCustomized: !!row.titleCustomized,
     workingDir: row.workingDir,
     projectDir: row.projectDir,
     workspaceKind: normalizeWorkspaceKind(row.workspaceKind),
@@ -507,6 +508,7 @@ export function sessionCreateToRow(
 export function sessionPatchToRow(
   patch: {
     title?: string;
+    titleCustomized?: boolean;
     workingDir?: string;
     workspaceKind?: WorkspaceKind;
     model?: string;
@@ -532,6 +534,7 @@ export function sessionPatchToRow(
 ): Partial<SessionInsert> {
   const out: Partial<SessionInsert> = {};
   if (patch.title !== undefined) out.title = patch.title;
+  if (patch.titleCustomized !== undefined) out.titleCustomized = !!patch.titleCustomized;
   if (patch.workingDir !== undefined)
     out.workingDir = normalizeWorkingDirForStorage(patch.workingDir);
   if (patch.workspaceKind !== undefined) out.workspaceKind = patch.workspaceKind;

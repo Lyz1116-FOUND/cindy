@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useIsFocused, usePathname } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { projectDraftSessionTitle } from '@cindy/maker-shared/session-title';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
 
 import { getMobileAuthOwner, isMobileAuthOwnerCurrent } from '@/auth/authOwnerGeneration';
 import type { RemoteInvoke } from '@/device-link/mobileMakerTransport';
@@ -177,7 +177,7 @@ async function autoArchiveLeftTask({ session, deviceId, invoke, patchSession, t,
   }
   // 写入被后来的操作取代时(任务仍在活跃列表里)没有归档,不提示。
   if (current()?.status === 'active' || !isMobileAuthOwnerCurrent(owner)) return;
-  const title = projectDraftSessionTitle(session.title, t('session.menu.unnamedTitle')).trim() || t('devices.list.untitled');
+  const title = remoteSessionDisplayTitle(session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle')).trim() || t('devices.list.untitled');
   showTaskArchiveUndo(title, () => {
     if (isMobileAuthOwnerCurrent(owner)) void patchSession({ ...target, status: 'archived' }, { status: 'active' }).catch(() => {});
   });

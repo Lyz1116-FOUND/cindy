@@ -364,6 +364,8 @@ export interface Session {
   id: string;
   userId: string;
   title: string;
+  /** 用户手动改过标题；内置默认标题同名时保留用户选择。旧主机缺省按 false。 */
+  titleCustomized?: boolean;
   workingDir: string | null;
   /** Explicit project membership; old hosts/tasks fall back to workingDir. */
   projectDir?: string | null;

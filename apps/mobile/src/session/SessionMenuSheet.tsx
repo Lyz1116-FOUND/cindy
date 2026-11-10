@@ -54,7 +54,8 @@ import { Text, TextInput } from '@/components/AppText';
 import { MainWindowActionButton, MainWindowActionGroup } from '@/components/MobilePrimitives';
 import type { MobileMakerTransport, RemoteDirectoryEntry } from '@/device-link/mobileMakerTransport';
 import type { CodexResetAutoUseSettings, MobileCodexRateLimitsResult } from '@cindy/maker-shared/device-link-contract';
-import { projectDraftSessionTitle } from '@cindy/maker-shared/session-title';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
+import { isBuiltinFollowUpDefaultSession } from '@cindy/maker-shared/session-title';
 import { isSharedTaskPeer } from '@cindy/device-link';
 import { computeContextSheetSnapHeights, type ContextSheetSnap } from '@/session/contextSheetModel';
 import { writeClipboardText } from '@/session/messageActions';
@@ -276,7 +277,7 @@ export function SessionMenuSheet({
   // 重命名输入框的预填值:哨兵先过投影,输入框里不能出现内部哨兵 "New Maker"
   // (与桌面 SessionContentHeader 的预填同款)。用户不改直接确定时由 submitRename
   // 的「没改就不落库」判据挡住,详见那里的注释。
-  const renamePrefill = projectDraftSessionTitle(session.title, t('session.menu.unnamedTitle'));
+  const renamePrefill = remoteSessionDisplayTitle(session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle'));
   const [titleDraft, setTitleDraft] = useState(renamePrefill);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [extraDirsNotice, setExtraDirsNotice] = useState<string | null>(null);
@@ -442,12 +443,13 @@ export function SessionMenuSheet({
     if (renameOnly) onClose();
     // 「没改就不落库」要同时比原始标题**和**预填的投影值:未起名会话预填的是本地化
     // 兜底文案,只比原始标题会把这个文案写进 DB,哨兵被毁 → 自动起名永久跳过该会话。
-    if (!next || next === session.title || next === renamePrefill) {
+    if (!next || next === renamePrefill ||
+      (next === session.title && (!isBuiltinFollowUpDefaultSession(session) || next === renamePrefill))) {
       setTitleDraft(renamePrefill);
       return;
     }
     onRename(next);
-  }, [onClose, onRename, renameOnly, renamePrefill, session.title, titleDraft]);
+  }, [onClose, onRename, renameOnly, renamePrefill, session, titleDraft]);
 
   const cancelRename = useCallback(() => {
     renameSeqRef.current += 1;

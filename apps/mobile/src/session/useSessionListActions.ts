@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { projectDraftSessionTitle } from '@cindy/maker-shared/session-title';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
+import { isBuiltinFollowUpDefaultSession } from '@cindy/maker-shared/session-title';
 import { useDeviceLink } from '@/device-link/DeviceLinkContext';
 import { humanizeRemoteError } from '@/device-link/remoteStatus';
 import { isExplicitRemoteNotFoundError, isWorktreeChannelNotAllowedError } from '@/session/newSessionWorktree';
@@ -194,7 +195,7 @@ export function useSessionListActions(options?: {
 
   const applySessionSheetAction = useCallback((session: RemoteSession, action: SessionSwipeAction) => {
     if (action === 'delete') {
-      const title = projectDraftSessionTitle(session.title, t('session.menu.unnamedTitle')).trim()
+      const title = remoteSessionDisplayTitle(session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle')).trim()
         || t('devices.list.untitled');
       Alert.alert(t('devices.list.alert.deleteTitle'), t('devices.list.alert.deleteMessage', { title }), [
         { style: 'cancel', text: t('devices.common.cancel') },
@@ -203,7 +204,7 @@ export function useSessionListActions(options?: {
       return;
     }
     if (action === 'rename') {
-      setRenameSessionDraft(projectDraftSessionTitle(session.title, t('session.menu.unnamedTitle')));
+      setRenameSessionDraft(remoteSessionDisplayTitle(session, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle')));
       setRenameSessionTarget(session);
       return;
     }
@@ -238,8 +239,8 @@ export function useSessionListActions(options?: {
     const title = renameSessionDraft.trim();
     if (!target || !title) return;
     setRenameSessionTarget(null);
-    if (title === (target.title ?? '')) return;
-    if (title === projectDraftSessionTitle(target.title, t('session.menu.unnamedTitle'))) return;
+    const displayed = remoteSessionDisplayTitle(target, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle'));
+    if (title === displayed || (title === (target.title ?? '') && !isBuiltinFollowUpDefaultSession(target))) return;
     void patchSession(target, { title }).catch((err: unknown) => {
       Alert.alert(t('devices.list.alert.renameFailed'), humanizeRemoteError(err));
     });

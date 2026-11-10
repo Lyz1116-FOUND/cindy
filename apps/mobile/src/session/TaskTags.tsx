@@ -42,7 +42,7 @@ import { useDeviceLink, subscribeRemoteTaskTagsChanged } from '@/device-link/Dev
 import { useTheme, type ThemeColors } from '@/theme';
 import { radius, spacing, typeScale, iconSize, fontWeight, lineHeight, motionDuration, motionEasing } from '@/theme/tokens';
 import { remoteSessionStore, useRemoteSessions } from './remoteSessionStore';
-import { projectDraftSessionTitle } from '@cindy/maker-shared/session-title';
+import { remoteSessionDisplayTitle } from '@cindy/maker-shared/session-list';
 import { useAuth } from '@/auth/AuthContext';
 import {
   readTaskTagCatalog,
@@ -248,7 +248,7 @@ export function TaskMenuHeading({
             fontWeight: fontWeight.semibold,
           }}
         >
-          {projectDraftSessionTitle(current.title, t('session.menu.unnamedTitle'))}
+          {remoteSessionDisplayTitle(current, t('session.menu.unnamedTitle'), t('session.builtinFollowUpTitle'))}
         </Text>
       )}
       {!!current.tags?.length && (

@@ -202,7 +202,7 @@ import {
   viewedPriorityHold,
 } from './sidebar/sections/ProjectsSection';
 import { advanceViewedPriorityHold, partitionCindyMakeSessions, sortSessionsForMainList } from './lib/mainListModel';
-import { isBuiltinFollowUpDefaultSession, toStoredSessionTitle } from './lib/sessionDisplayTitle';
+import { getSessionDisplayTitle, isBuiltinFollowUpDefaultSession, isBuiltinFollowUpLocalizedDefaultTitle, toStoredSessionTitle } from './lib/sessionDisplayTitle';
 import {
   getVisibleSidebarSessionIds,
   pickSessionIdAfterRemoval,
@@ -2933,13 +2933,16 @@ function ExpandedView({
       // 会话已剥掉 `[Schedule] ` 前缀),直接落库会让它从 automation 分组里消失。提交前
       // 把前缀还原回去(PR #1031 review P1)。
       const newTitle = session ? toStoredSessionTitle(session, editedTitle) : editedTitle;
-      // 内置默认名原样确认（含编辑中切语言）不产生写入，也不标记为手动改名。
-      if (session && newTitle === session.title && isBuiltinFollowUpDefaultSession(session)) return;
+      // 内置默认显示名原样确认（含编辑中切语言）不产生写入；但用户主动输入存储默认名则保留为用户标题。
+      const edited = editedTitle.trim();
+      const displayed = session ? getSessionDisplayTitle(session, '', t) : '';
+      if (session && newTitle === session.title && isBuiltinFollowUpDefaultSession(session) &&
+        (edited === displayed || isBuiltinFollowUpLocalizedDefaultTitle(edited))) return;
       // 取旧值用于失败回滚，乐观先 patch（不刷整列表，列表顺序保持稳定）
       // 保持读 sessions(而非 sessionsById):后者含 remoteProjectSessions,换源会连带
       // 改变远程会话的回滚行为,不在本次修复范围内。
       const oldTitle = sessionsRef.current.find((s) => s.id === sessionId)?.title;
-      patchLocal(sessionId, { title: newTitle });
+      patchLocal(sessionId, { title: newTitle, titleCustomized: true });
       try {
         // 远程会话:patch-meta 经隧道写被控端 → 广播 sessions:patched → applyPatch 更新远程分片(纯镜像)。
         await sessionService.patchMeta(sessionId, { title: newTitle });
