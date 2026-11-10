@@ -233,6 +233,55 @@ describe('plugin display projections', () => {
   });
 
   // 测试价值
+  // - 生产入口与可观察结果：createGhostDisplayProjection.update；成功处理插件提示后，旧读取不能把提示重新显示出来。
+  // - Bug／规则依据：#9580 关联审计的共享显示投影；成功 mutation 与 in-flight refresh 的时序边界。
+  // - 现有覆盖缺口：既有共享/owner 用例没有覆盖 update 后旧 read 回包。
+  // - 最小失败输入：read 挂起并持有待处理项 → update 移除该项 → 旧 read 返回同一待处理项。
+  // - tier：unit；内存 deferred，无真实等待。
+  it('successful local update is not undone by an older in-flight display read', async () => {
+    let resolveOld!: (value: string[]) => void;
+    const read = vi.fn().mockImplementationOnce(() => new Promise<string[]>(resolve => { resolveOld = resolve; }));
+    const projection = createGhostDisplayProjection(read, [] as string[]);
+    const hook = renderHook(() => useGhostDisplayProjection(projection));
+    await act(async () => {});
+    expect(read).toHaveBeenCalledTimes(1);
+    act(() => projection.update(() => ['handled']));
+    expect(hook.result.current).toEqual(['handled']);
+    await act(async () => { resolveOld(['pending']); });
+    expect(hook.result.current).toEqual(['handled']);
+    expect(read).toHaveBeenCalledTimes(1);
+    hook.unmount();
+    projection.__resetForTest();
+  });
+
+  // 测试价值
+  // - 生产入口与可观察结果：createGhostDisplayProjection.update/subscribe；旧 owner 的成功写入不会通知或显示到新 owner。
+  // - Bug／规则依据：#9580 关联审计的 owner 切换边界；显示投影不能跨 owner 复用成功 mutation。
+  // - 现有覆盖缺口：既有 owner 用例只覆盖 read 回包，没有覆盖 mutation 回包晚于 owner 切换。
+  // - 最小失败输入：owner A 显示已加载 → 切 owner B → A 的 update 才返回。
+  // - tier：unit；内存 deferred，无真实等待。
+  it('discards a successful mutation from the previous data owner', async () => {
+    setDataOwnerGeneration('owner-a', 0);
+    const read = vi.fn()
+      .mockResolvedValueOnce(['old-owner-plugin'])
+      .mockResolvedValue(['new-owner-plugin']);
+    const projection = createGhostDisplayProjection(read, [] as string[]);
+    const listener = vi.fn();
+    const unsubscribe = projection.subscribe(listener);
+    await act(async () => {});
+    expect(projection.getSnapshot()).toEqual(['old-owner-plugin']);
+    listener.mockClear();
+    act(() => setDataOwnerGeneration('owner-b', 1));
+    act(() => projection.update(() => ['old-owner-mutation']));
+    expect(listener).not.toHaveBeenCalled();
+    await act(async () => {});
+    expect(projection.getSnapshot()).toEqual(['new-owner-plugin']);
+    expect(read).toHaveBeenCalledTimes(2);
+    unsubscribe();
+    projection.__resetForTest();
+  });
+
+  // 测试价值
   // - 生产入口与可观察结果：createGhostDisplayProjection/useGhostDisplayProjection；切账号后插件显示投影自动读到新账号数据。
   // - Bug／规则依据：#9580 关联审计发现的 owner 切换 in-flight 停更。
   // - 现有覆盖缺口：既有共享/通知用例没有覆盖旧请求未返回时切 owner。

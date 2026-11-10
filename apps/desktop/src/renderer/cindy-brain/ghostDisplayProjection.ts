@@ -93,6 +93,13 @@ export function createGhostDisplayProjection<T>(read: () => Promise<T>, empty: T
       else dirty = true;
     },
     update(mutate) {
+      if (!current()) {
+        // 旧 owner 的成功写入不能覆盖新 owner 的显示；ensure 会安排新 owner 读取。
+        ensure();
+        return;
+      }
+      // 成功本地更新后，较早发起的 Host 读取可能仍带回旧状态；作废旧 revision。
+      request += 1;
       snapshot = mutate(snapshot);
       loaded = true;
       notify();
